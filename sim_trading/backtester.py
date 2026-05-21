@@ -402,7 +402,7 @@ class BacktestEngine:
                     code_row = snapshot[snapshot['code'] == code]
                     if not code_row.empty:
                         buy_price = code_row['close'].values[0]
-                        shares = int(10000 / buy_price / 100) * 100  # 按手取整
+                        shares = int(100000 / buy_price / 100) * 100  # 按手取整，策略资金¥10万
                         if shares >= 100 and buy_price * shares <= cash:
                             # 扣除买入成本
                             buy_cost = buy_price * shares * 1.0003
