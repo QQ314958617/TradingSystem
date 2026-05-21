@@ -114,9 +114,9 @@ def risk_check():
             if strategy_used + cost > strategy_capital:
                 errors.append(f'策略[{strategy["name"]}]资金超限：已用¥{strategy_used:.0f} + 本次¥{cost:.0f} = ¥{strategy_used+cost:.0f}，上限¥{strategy_capital:.0f}')
     elif action == 'sell':
-        position = db.get_position(stock_code)
+        position = db.get_position(stock_code, strategy_id=strategy_id)
         if not position:
-            errors.append('没有该股票持仓')
+            errors.append(f'策略{strategy_id}没有该股票持仓')
         elif position['shares'] < shares:
             errors.append(f'持仓不足，持有 {position["shares"]} 股')
 
@@ -178,33 +178,34 @@ def execute_trade():
         new_cash = account['cash'] - cost
         bj_tz = timezone(timedelta(hours=8))
         now_bj = datetime.now(bj_tz).strftime('%Y-%m-%d %H:%M:%S')
-        position = db.get_position(stock_code)
+        position = db.get_position(stock_code, strategy_id=strategy_id)
 
         # 仓位阶段支持（v3.0）
         position_phase = data.get('position_phase')
         target_shares = data.get('target_shares')
 
         if position:
+            # 同策略加仓
             total_shares = position['shares'] + shares
             total_cost = position['avg_cost'] * position['shares'] + amount
             new_avg_cost = total_cost / total_shares
-            # 加仓时更新phase
             new_phase = position_phase if position_phase else position.get('position_phase')
             db.upsert_position(stock_code, name, total_shares, new_avg_cost,
                              strategy_id=strategy_id, position_phase=new_phase,
                              target_shares=target_shares)
         else:
+            # 检查是否其他策略已持有该股（现在唯一约束允许，但仍警告）
+            other_position = db.get_position(stock_code)
+            if other_position and other_position.get('strategy_id') != strategy_id:
+                logger.warning(f"同一股票{stock_code}已被策略{other_position['strategy_id']}持有，策略{strategy_id}新建仓")
             db.upsert_position(stock_code, name, shares, price, buy_date=now_bj,
                              strategy_id=strategy_id, position_phase=position_phase or 1,
                              target_shares=target_shares)
 
     elif action == 'sell':
-        position = db.get_position(stock_code)
+        position = db.get_position(stock_code, strategy_id=strategy_id)
         if not position:
-            return jsonify({"error": "没有持仓"}), 400
-        # === 策略隔离校验：不能卖别的策略的持仓 ===
-        if position.get('strategy_id') and position['strategy_id'] != strategy_id:
-            return jsonify({"error": f"策略隔离冲突：该持仓属于策略{position['strategy_id']}，不能用策略{strategy_id}卖出"}), 400
+            return jsonify({"error": f"策略{strategy_id}没有该股票持仓"}), 400
         if position['shares'] < shares:
             return jsonify({"error": "持仓不足"}), 400
 
@@ -224,11 +225,11 @@ def execute_trade():
 
         remaining = position['shares'] - shares
         if remaining == 0:
-            db.delete_position(stock_code)
+            db.delete_position(stock_code, strategy_id=strategy_id)
         else:
             # 保留原持仓的strategy_id和position_phase
             db.upsert_position(stock_code, name, remaining, position['avg_cost'],
-                             strategy_id=position.get('strategy_id', strategy_id),
+                             strategy_id=strategy_id,
                              position_phase=position.get('position_phase'),
                              target_shares=position.get('target_shares'))
 

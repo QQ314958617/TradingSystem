@@ -1,5 +1,5 @@
 """
-数据库层 - SQLite（多策略支持 v2.0）
+数据库层 - SQLite(多策略支持 v2.0)
 """
 import sqlite3
 import os
@@ -30,7 +30,7 @@ def init_database():
     """初始化数据库表"""
     with get_connection() as conn:
         c = conn.cursor()
-        
+
         # 账户表
         c.execute('''
             CREATE TABLE IF NOT EXISTS account (
@@ -42,7 +42,7 @@ def init_database():
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # 持仓表
         c.execute('''
             CREATE TABLE IF NOT EXISTS positions (
@@ -56,10 +56,10 @@ def init_database():
                 strategy_id INTEGER DEFAULT 1,
                 position_phase INTEGER DEFAULT 3,
                 target_shares INTEGER DEFAULT 0,
-                UNIQUE(stock_code)
+                UNIQUE(stock_code, strategy_id)
             )
         ''')
-        
+
         # 交易记录表
         c.execute('''
             CREATE TABLE IF NOT EXISTS trades (
@@ -77,7 +77,7 @@ def init_database():
                 strategy_id INTEGER DEFAULT 1
             )
         ''')
-        
+
         # 每日复盘表
         c.execute('''
             CREATE TABLE IF NOT EXISTS daily_reviews (
@@ -90,7 +90,7 @@ def init_database():
                 tags TEXT
             )
         ''')
-        
+
         # 账户净值历史
         c.execute('''
             CREATE TABLE IF NOT EXISTS equity_curve (
@@ -103,7 +103,7 @@ def init_database():
                 timestamp TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
+
         # 策略表
         c.execute('''
             CREATE TABLE IF NOT EXISTS strategies (
@@ -118,8 +118,8 @@ def init_database():
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
-        # 兼容旧表：添加strategy_id列（如果不存在）
+
+        # 兼容旧表:添加strategy_id列(如果不存在)
         c.execute('PRAGMA table_info(trades)')
         cols_trades = [r[1] for r in c.fetchall()]
         if 'strategy_id' not in cols_trades:
@@ -136,52 +136,52 @@ def init_database():
         cols_equity = [r[1] for r in c.fetchall()]
         if 'strategy_id' not in cols_equity:
             c.execute('ALTER TABLE equity_curve ADD COLUMN strategy_id INTEGER DEFAULT 0')
-        
-        # 兼容旧表：添加initial_capital列
+
+        # 兼容旧表:添加initial_capital列
         c.execute('PRAGMA table_info(account)')
         cols_account = [r[1] for r in c.fetchall()]
         if 'initial_capital' not in cols_account:
             c.execute('ALTER TABLE account ADD COLUMN initial_capital REAL DEFAULT 50000.0')
-            # 如果总资产已变化，将initial_capital同步为当前total_value（避免旧利润虚高）
+            # 如果总资产已变化,将initial_capital同步为当前total_value(避免旧利润虚高)
             c.execute('SELECT total_value FROM account WHERE id = 1')
             row = c.fetchone()
             if row and row[0] > 50100:
                 c.execute('UPDATE account SET initial_capital = total_value WHERE id = 1')
                 print(f"  📌 已同步 initial_capital={row[0]} (防止旧数据利润虚高)")
-        
-        # 初始化默认策略（每个¥100K）
+
+        # 初始化默认策略(每个¥100K)
         default_strategies = [
-            ('一夜持股法', 'overnight', '尾盘14:50-14:55买入，次日早盘09:30-10:30卖出，超短线一夜持股', 100000.0, 1, '{}'),
-            ('价值投资', 'value', '巴菲特价值投资理念，PE<15、ROE>15%，中线持有到合理估值', 300000.0, 1, '{}'),
-            ('趋势跟踪', 'trend', '强势股趋势波段，均线金叉+放量突破，持股1-2周', 100000.0, 1, '{}'),
+            ('一夜持股法', 'overnight', '尾盘14:50-14:55买入,次日早盘09:30-10:30卖出,超短线一夜持股', 100000.0, 1, '{}'),
+            ('价值投资', 'value', '巴菲特价值投资理念,PE<15、ROE>15%,中线持有到合理估值', 300000.0, 1, '{}'),
+            ('趋势跟踪', 'trend', '强势股趋势波段,均线金叉+放量突破,持股1-2周', 100000.0, 1, '{}'),
         ]
         for s in default_strategies:
             c.execute('''
                 INSERT OR IGNORE INTO strategies (name, type, description, capital, is_active, config)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', s)
-        
-        # 初始化账户（如果不存在）
+
+        # 初始化账户(如果不存在)
         bj_tz = timezone(timedelta(hours=8))
         now_bj = datetime.now(bj_tz).strftime('%Y-%m-%d %H:%M:%S')
         c.execute('SELECT COUNT(*) FROM account')
         if c.fetchone()[0] == 0:
             c.execute('INSERT INTO account (id, cash, total_value, created_at, updated_at) VALUES (1, 50000.0, 50000.0, ?, ?)',
                       (now_bj, now_bj))
-        
+
         # 性能索引
         c.execute('CREATE INDEX IF NOT EXISTS idx_trades_timestamp ON trades(timestamp)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_trades_strategy ON trades(strategy_id)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_equity_date ON equity_curve(date)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_equity_date_strategy ON equity_curve(date, strategy_id)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_positions_strategy ON positions(strategy_id)')
-        
+
         conn.commit()
 
 
 # ========== 账户操作 ==========
 
-INITIAL_CAPITAL = 500000.0  # 总账户初始资金（一夜持股¥10万 + 价值投资¥30万 + 趋势跟踪¥10万）
+INITIAL_CAPITAL = 500000.0  # 总账户初始资金(一夜持股¥10万 + 价值投资¥30万 + 趋势跟踪¥10万)
 
 def get_account():
     """获取账户信息"""
@@ -202,7 +202,7 @@ def update_account(cash, total_value, total_profit=None):
     """更新账户"""
     bj_tz = timezone(timedelta(hours=8))
     now_bj = datetime.now(bj_tz).strftime('%Y-%m-%d %H:%M:%S')
-    
+
     with get_connection() as conn:
         c = conn.cursor()
         # 获取initial_capital自动计算利润
@@ -212,7 +212,7 @@ def update_account(cash, total_value, total_profit=None):
         if total_profit is None:
             total_profit = round(total_value - ic, 2)
         c.execute('''
-            UPDATE account 
+            UPDATE account
             SET cash = ?, total_value = ?, total_profit = ?, updated_at = ?
             WHERE id = 1
         ''', (round(cash, 2), round(total_value, 2), round(total_profit, 2), now_bj))
@@ -276,7 +276,7 @@ def get_total_strategies_capital():
 # ========== 持仓操作 ==========
 
 def get_positions(strategy_id=None):
-    """获取持仓（可选按策略过滤）"""
+    """获取持仓(可选按策略过滤)"""
     with get_connection() as conn:
         c = conn.cursor()
         if strategy_id:
@@ -285,40 +285,45 @@ def get_positions(strategy_id=None):
             c.execute('SELECT * FROM positions ORDER BY strategy_id')
         return [dict(row) for row in c.fetchall()]
 
-def get_position(stock_code):
-    """获取单只股票持仓"""
+def get_position(stock_code, strategy_id=None):
+    """获取单只股票持仓（可按策略过滤）"""
     with get_connection() as conn:
         c = conn.cursor()
-        c.execute('SELECT * FROM positions WHERE stock_code = ?', (stock_code,))
+        if strategy_id:
+            c.execute('SELECT * FROM positions WHERE stock_code = ? AND strategy_id = ?', (stock_code, strategy_id))
+        else:
+            c.execute('SELECT * FROM positions WHERE stock_code = ?', (stock_code,))
         row = c.fetchone()
         return dict(row) if row else None
 
 def upsert_position(stock_code, stock_name, shares, avg_cost, buy_date=None, strategy_id=1, position_phase=None, target_shares=None):
-    """更新持仓"""
+    """更新持仓（按stock_code+strategy_id唯一）"""
     bj_tz = timezone(timedelta(hours=8))
     now_bj = datetime.now(bj_tz).strftime('%Y-%m-%d %H:%M:%S')
-    
+
     with get_connection() as conn:
         c = conn.cursor()
         c.execute('''
             INSERT INTO positions (stock_code, stock_name, shares, avg_cost, buy_date, created_at, strategy_id, position_phase, target_shares)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(stock_code) DO UPDATE SET
+            ON CONFLICT(stock_code, strategy_id) DO UPDATE SET
                 stock_name = excluded.stock_name,
                 shares = excluded.shares,
                 avg_cost = excluded.avg_cost,
-                strategy_id = excluded.strategy_id,
                 position_phase = COALESCE(excluded.position_phase, positions.position_phase),
                 target_shares = COALESCE(excluded.target_shares, positions.target_shares)
         ''', (stock_code, stock_name, shares, round(avg_cost, 2), buy_date or now_bj, now_bj, strategy_id,
               position_phase, target_shares))
         conn.commit()
 
-def delete_position(stock_code):
-    """删除持仓"""
+def delete_position(stock_code, strategy_id=None):
+    """删除持仓（按stock_code+strategy_id精确删除）"""
     with get_connection() as conn:
         c = conn.cursor()
-        c.execute('DELETE FROM positions WHERE stock_code = ?', (stock_code,))
+        if strategy_id:
+            c.execute('DELETE FROM positions WHERE stock_code = ? AND strategy_id = ?', (stock_code, strategy_id))
+        else:
+            c.execute('DELETE FROM positions WHERE stock_code = ?', (stock_code,))
         conn.commit()
 
 # ========== 交易记录 ==========
@@ -327,7 +332,7 @@ def add_trade(action, stock_code, stock_name, price, shares, amount, commission=
     """添加交易记录"""
     bj_tz = timezone(timedelta(hours=8))
     bj_time = datetime.now(bj_tz).strftime('%Y-%m-%d %H:%M:%S')
-    
+
     with get_connection() as conn:
         c = conn.cursor()
         c.execute('''
@@ -338,7 +343,7 @@ def add_trade(action, stock_code, stock_name, price, shares, amount, commission=
         return c.lastrowid
 
 def get_trades(limit=100, offset=0, strategy_id=None):
-    """获取交易记录（支持分页+策略过滤）"""
+    """获取交易记录(支持分页+策略过滤)"""
     with get_connection() as conn:
         c = conn.cursor()
         if strategy_id:
@@ -364,7 +369,7 @@ def add_review(date, content, strategies='', profit=0, tags=''):
     """添加复盘"""
     bj_tz = timezone(timedelta(hours=8))
     bj_time = datetime.now(bj_tz).strftime('%Y-%m-%d %H:%M:%S')
-    
+
     with get_connection() as conn:
         c = conn.cursor()
         c.execute('''
@@ -382,7 +387,7 @@ def get_reviews(limit=50):
         return [dict(row) for row in c.fetchall()]
 
 def get_reviews_paged(offset=0, limit=10):
-    """获取复盘记录（分页）"""
+    """获取复盘记录(分页)"""
     with get_connection() as conn:
         c = conn.cursor()
         c.execute('SELECT COUNT(*) FROM daily_reviews')
@@ -396,7 +401,7 @@ def add_equity_record(date, total_value, cash, position_value, strategy_id=0):
     """记录净值"""
     bj_tz = timezone(timedelta(hours=8))
     bj_time = datetime.now(bj_tz).strftime('%Y-%m-%d %H:%M:%S')
-    
+
     with get_connection() as conn:
         c = conn.cursor()
         c.execute('''
@@ -411,15 +416,15 @@ def get_equity_curve(days=30, strategy_id=None):
         c = conn.cursor()
         if strategy_id:
             c.execute('''
-                SELECT * FROM equity_curve 
+                SELECT * FROM equity_curve
                 WHERE strategy_id = ?
-                ORDER BY date ASC 
+                ORDER BY date ASC
                 LIMIT ?
             ''', (strategy_id, days))
         else:
             c.execute('''
-                SELECT * FROM equity_curve 
-                ORDER BY date ASC 
+                SELECT * FROM equity_curve
+                ORDER BY date ASC
                 LIMIT ?
             ''', (days,))
         return [dict(row) for row in c.fetchall()]
@@ -431,27 +436,27 @@ def get_recently_sold_stocks(hours=48, strategy_id=None):
     bj_tz = timezone(timedelta(hours=8))
     cutoff = datetime.now(bj_tz) - timedelta(hours=hours)
     cutoff_str = cutoff.strftime('%Y-%m-%d %H:%M:%S')
-    
+
     with get_connection() as conn:
         c = conn.cursor()
         if strategy_id:
             c.execute('''
                 SELECT DISTINCT stock_code, stock_name, profit, timestamp
-                FROM trades 
+                FROM trades
                 WHERE action = 'sell' AND timestamp >= ? AND strategy_id = ?
                 ORDER BY timestamp DESC
             ''', (cutoff_str, strategy_id))
         else:
             c.execute('''
                 SELECT DISTINCT stock_code, stock_name, profit, timestamp
-                FROM trades 
+                FROM trades
                 WHERE action = 'sell' AND timestamp >= ?
                 ORDER BY timestamp DESC
             ''', (cutoff_str,))
         return [dict(row) for row in c.fetchall()]
 
 def get_trade_stats(strategy_id=None):
-    """获取交易统计（可选按策略过滤）"""
+    """获取交易统计(可选按策略过滤)"""
     with get_connection() as conn:
         c = conn.cursor()
         # 卖出次数
