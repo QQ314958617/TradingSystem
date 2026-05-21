@@ -60,7 +60,7 @@ def get_quote(stock_code):
 def get_quotes_batch():
     """批量获取持仓股行情（腾讯API）"""
     positions = db.get_positions()
-    codes = [p['stock_code'] for p in positions]
+    codes = list(set(p['stock_code'] for p in positions))  # 去重，同一股票可能被多策略持有
 
     if not codes:
         return jsonify([])

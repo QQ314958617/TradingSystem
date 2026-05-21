@@ -237,7 +237,7 @@ def execute_trade():
     positions = db.get_positions()
     total_value = new_cash
     try:
-        codes = [p['stock_code'] for p in positions]
+        codes = list(set(p['stock_code'] for p in positions))  # 去重，同一股票可能被多策略持有
         quotes = get_tencent_quote(codes) if codes else {}
         for pos in positions:
             code = pos['stock_code']
