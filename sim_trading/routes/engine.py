@@ -279,30 +279,7 @@ def engine_run():
                             })
                             break
 
-        # 执行交易
-        results = []
-        executed_count = 0
-
-        urgent_actions = [a for a in actions if a.get("urgent")]
-        normal_actions = [a for a in actions if not a.get("urgent")]
-
-        for action in urgent_actions + normal_actions:
-            if executed_count >= 5:
-                break
-            trade_result = db.execute_trade(
-                action["action"].lower(),
-                action["code"],
-                action["shares"],
-                action["reason"]
-            )
-            results.append({
-                "action": action,
-                "result": trade_result,
-                "success": trade_result.get("success", False),
-            })
-            if trade_result.get("success"):
-                executed_count += 1
-
+        # 输出分析报告（仅信号，不执行交易，交易由cron通过/api/trade执行）
         report = {
             "success": True,
             "timestamp": datetime.now().strftime("%H:%M:%S"),
@@ -323,8 +300,7 @@ def engine_run():
                 "alerts": alerts,
             },
             "actions_planned": len(actions),
-            "actions_executed": executed_count,
-            "results": results,
+            "actions": actions,
         }
 
         return jsonify(report)
@@ -480,55 +456,31 @@ def market_scan():
             except Exception as e:
                 logger.warning(f"持仓检查失败: {e}")
 
-        # 找新买入机会（一夜持股法v2.0）
+        # 找新买入机会（一夜持股法 - 仅输出信号，不执行交易）
         now_hour = datetime.now().hour
         now_min = datetime.now().minute
         in_buy_window = (now_hour == 14 and 30 <= now_min <= 55)
 
         if in_buy_window and not result["actions"] and not positions_data:
             try:
-                from overnight_screener import screen_overnight_v2
-                candidates = screen_overnight_v2()
+                from overnight_screener import screen_overnight_v3
+                candidates = screen_overnight_v3()
                 if candidates:
                     best = candidates[0]
                     result["signals"].append({
                         "type": "BUY_OPPORTUNITY",
-                        "code": best['code'],
-                        "name": best['name'],
-                        "change_pct": best['change_pct'],
-                        "score": best['score'],
-                    })
-                    result["actions"].append({
-                        "action": "BUY",
-                        "code": best['code'],
-                        "name": best['name'],
-                        "shares": 100,
-                        "reason": f"一夜持股法v2.0 涨幅{best['change_pct']}%+RSI{best['rsi']}+放量{best['volume_ratio']}x",
-                        "urgent": False,
+                        "code": best.get('code', ''),
+                        "name": best.get('name', ''),
+                        "change_pct": best.get('change_pct', 0),
+                        "score": best.get('score', 0),
                     })
             except Exception as e:
                 logger.warning(f"选股失败: {e}")
 
-        # 执行交易
-        urgent_actions = [a for a in result["actions"] if a.get("urgent")]
-        normal_actions = [a for a in result["actions"] if not a.get("urgent")]
-
-        for action in urgent_actions + normal_actions:
-            trade_result = db.execute_trade(
-                action["action"].lower(),
-                action["code"],
-                action["shares"],
-                action["reason"]
-            )
-            result["executed"].append({
-                "action": action,
-                "result": trade_result,
-            })
-
-        # 最终决定
+        # 最终决定（仅输出信号，交易由cron通过/api/trade执行）
         if result["actions"]:
             action_summary = [f"{a['action']} {a['name']}({a['code']})" for a in result["actions"]]
-            result["decision"] = f"执行: {', '.join(action_summary)}"
+            result["decision"] = f"信号: {', '.join(action_summary)}"
         elif in_buy_window:
             result["decision"] = "观望 - 买入窗口内，暂无符合条件个股"
         else:

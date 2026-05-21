@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "skills": {
+    "akshare-stock": {
+      "name": "A股量化 AkShare",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=akshare-stock",
+      "source": "community",
+      "version": "1.0.1",
+      "installedAt": "2026-05-21T08:59:17Z"
+    },
+    "market-analysis-cn": {
+      "name": "Market Analysis CN | 市场分析服务",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=market-analysis-cn",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-05-21T08:59:19Z"
+    },
+    "china-stock-analysis": {
+      "name": "China Stock Analysis",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=china-stock-analysis",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-05-21T08:59:20Z"
+    },
+    "stock-monitor-skill": {
+      "name": "Stock Monitor",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=stock-monitor-skill",
+      "source": "community",
+      "version": "0.1.0",
+      "installedAt": "2026-05-21T08:59:22Z"
+    },
+    "stock-watcher": {
+      "name": "Stock Watcher",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=stock-watcher",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-05-21T08:59:24Z"
+    }
+  }
+}
