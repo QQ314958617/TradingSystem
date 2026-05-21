@@ -98,6 +98,9 @@ body {
 .btn-buy:hover { background: #ef4444; transform: translateY(-1px); }
 .btn-sell { background: var(--up); color: #fff; }
 .btn-sell:hover { background: #10b981; transform: translateY(-1px); }
+.btn-refresh svg { transition: transform 0.3s; }
+.btn-refresh.spinning svg { animation: spin 0.8s linear infinite; }
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 .btn-accent { background: var(--accent); color: #fff; }
 .btn-accent:hover { background: var(--accent-light); transform: translateY(-1px); }
 .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-light); }
@@ -217,6 +220,9 @@ tr:hover td { background: rgba(255,255,255,0.015); color: var(--text-primary); }
         </span>
       </div>
       <span style="font-size:9px;color:var(--text-muted)" x-text="lastUpdate"></span>
+      <button @click="refresh()" class="btn-refresh" :class="refreshing&&'spinning'" title="刷新数据" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border-light);background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;flex-shrink:0" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-light)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-secondary)"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+      </button>
     </div>
   </div>
   
@@ -497,6 +503,7 @@ tr:hover td { background: rgba(255,255,255,0.015); color: var(--text-primary); }
 function app(){
   return {
     loading: true,
+    refreshing: false,
     data: { account:{cash:0,total_value:300000,total_profit:0}, positions:{}, trades:[], reviews:[], equity:[], index:{}, stats:{} },
     strategies: [],
     currentStrategy: 0,
@@ -549,6 +556,11 @@ function app(){
     async init(){
       await this.load();
       setInterval(()=>this.load(), 30000);
+    },
+    async refresh(){
+      this.refreshing = true;
+      await this.load();
+      this.refreshing = false;
     },
     switchStrategy(id){
       this.currentStrategy=id;

@@ -202,6 +202,9 @@ def execute_trade():
         position = db.get_position(stock_code)
         if not position:
             return jsonify({"error": "没有持仓"}), 400
+        # === 策略隔离校验：不能卖别的策略的持仓 ===
+        if position.get('strategy_id') and position['strategy_id'] != strategy_id:
+            return jsonify({"error": f"策略隔离冲突：该持仓属于策略{position['strategy_id']}，不能用策略{strategy_id}卖出"}), 400
         if position['shares'] < shares:
             return jsonify({"error": "持仓不足"}), 400
 
@@ -223,7 +226,11 @@ def execute_trade():
         if remaining == 0:
             db.delete_position(stock_code)
         else:
-            db.upsert_position(stock_code, name, remaining, position['avg_cost'])
+            # 保留原持仓的strategy_id和position_phase
+            db.upsert_position(stock_code, name, remaining, position['avg_cost'],
+                             strategy_id=position.get('strategy_id', strategy_id),
+                             position_phase=position.get('position_phase'),
+                             target_shares=position.get('target_shares'))
 
     # 更新账户
     positions = db.get_positions()
