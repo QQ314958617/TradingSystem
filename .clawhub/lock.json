@@ -128,6 +128,30 @@
     "feishu-bridge": {
       "version": "1.0.0",
       "installedAt": 1775547157880
+    },
+    "joinquant": {
+      "version": "1.0.2",
+      "installedAt": 1779420240619
+    },
+    "stock-strategy-backtester": {
+      "version": "1.0.4",
+      "installedAt": 1779420242478
+    },
+    "bitsoul-china-stock-quantization": {
+      "version": "1.0.31",
+      "installedAt": 1779420244206
+    },
+    "quant-strategy": {
+      "version": "1.0.0",
+      "installedAt": 1779420245758
+    },
+    "quant": {
+      "version": "1.0.0",
+      "installedAt": 1779420247230
+    },
+    "backtesting-trading-strategies": {
+      "version": "2.0.0",
+      "installedAt": 1779420248879
     }
   }
 }

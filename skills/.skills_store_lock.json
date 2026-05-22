@@ -72,6 +72,48 @@
       "zip_url": "https://lightmake.site/api/v1/download?slug=feishu-bridge",
       "source": "skillhub",
       "version": "1.0.0"
+    },
+    "joinquant": {
+      "name": "joinquant",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=joinquant",
+      "source": "community",
+      "version": "1.0.2",
+      "installedAt": "2026-05-22T03:24:00Z"
+    },
+    "stock-strategy-backtester": {
+      "name": "Stock Strategy Backtester",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=stock-strategy-backtester",
+      "source": "community",
+      "version": "1.0.4",
+      "installedAt": "2026-05-22T03:24:02Z"
+    },
+    "bitsoul-china-stock-quantization": {
+      "name": "BitSoulStockSkill",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=bitsoul-china-stock-quantization",
+      "source": "community",
+      "version": "1.0.31",
+      "installedAt": "2026-05-22T03:24:04Z"
+    },
+    "quant-strategy": {
+      "name": "Quant Strategy",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=quant-strategy",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-05-22T03:24:05Z"
+    },
+    "quant": {
+      "name": "Quant",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=quant",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-05-22T03:24:07Z"
+    },
+    "backtesting-trading-strategies": {
+      "name": "Backtesting Trading Strategies",
+      "zip_url": "https://lightmake.site/api/v1/download?slug=backtesting-trading-strategies",
+      "source": "community",
+      "version": "2.0.0",
+      "installedAt": "2026-05-22T03:24:08Z"
     }
   }
 }
