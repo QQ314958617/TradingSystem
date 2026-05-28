@@ -39,6 +39,17 @@ import time
 import warnings
 warnings.filterwarnings('ignore')
 
+# 信号数据服务（题材归因+资金流+龙虎榜）
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from services.signal import (
+        is_stock_in_hot_theme, fund_flow_summary,
+        dragon_tiger_check, get_hot_themes
+    )
+    SIGNAL_AVAILABLE = True
+except ImportError:
+    SIGNAL_AVAILABLE = False
+
 # ========== 策略参数 v3.0 ==========
 class Config:
     # 涨幅区间（%）：3%-5%
@@ -233,6 +244,17 @@ def screen_overnight_v3():
     codes = df_candidates['代码'].tolist()
     quotes = get_tencent_quotes(codes)
     
+    # Step 8: 信号层增强（题材归因+资金流+龙虎榜）
+    log("🌐 Step8: 信号层数据增强...")
+    hot_themes = []
+    if SIGNAL_AVAILABLE:
+        try:
+            hot_themes = get_hot_themes(top_n=10)
+            if hot_themes:
+                log(f"✅ 今日热门题材: {', '.join([t['theme'] for t in hot_themes[:5]])}")
+        except Exception as e:
+            log(f"⚠️ 热门题材获取失败(非致命): {e}")
+    
     # 用AKShare强势股池数据作为筛选主体（东方财富实时行情）
     # 腾讯API仅补充当前价等字段，不做二次过滤
     final_candidates = []
@@ -248,11 +270,40 @@ def screen_overnight_v3():
         # 是否新高加分
         is_new_high = 1 if str(row.get('是否新高', '')) == '是' else 0
         
-        # 综合评分
+        # 综合评分（基础分）
         score = int(row['涨跌幅'] * 10)
         score += int(row['换手率'] / 2)
         score += sector_bonus
         score += (15 if is_new_high == 1 else 0)
+        
+        # === 信号层加分（新增） ===
+        theme_info = {'in_hot': False, 'themes': [], 'reason': ''}
+        fund_info = {'main_net_wan': 0, 'direction': 'unknown', 'score': 0}
+        dragon_info = {'on_board': False, 'score': 0}
+        
+        if SIGNAL_AVAILABLE:
+            try:
+                # 题材归因加分（最高+15分）
+                theme_info = is_stock_in_hot_theme(code)
+                if theme_info['in_hot']:
+                    theme_bonus = min(len(theme_info['themes']) * 5, 15)
+                    score += theme_bonus
+            except Exception:
+                pass
+            
+            try:
+                # 资金流加分（最高+20分）
+                fund_info = fund_flow_summary(code)
+                score += fund_info['score']
+            except Exception:
+                pass
+            
+            try:
+                # 龙虎榜加分（最高+15分）
+                dragon_info = dragon_tiger_check(code)
+                score += dragon_info.get('score', 0)
+            except Exception:
+                pass
         
         final_candidates.append({
             'code':         code,
@@ -265,8 +316,13 @@ def screen_overnight_v3():
             '当前价':       qt.get('price', row.get('最新价', 0)),
             '最高价':       qt.get('high', 0),
             'score':        score,
-            'signal':       '★★★' if score >= 45 else ('★★' if score >= 35 else '★'),
+            'signal':       '★★★' if score >= 60 else ('★★' if score >= 45 else '★'),
             '是否新高':     '是' if is_new_high else '否',
+            # 信号层数据
+            '题材':         '+'.join(theme_info['themes'][:3]) if theme_info['in_hot'] else '',
+            '主力净流入_万': fund_info['main_net_wan'],
+            '资金方向':     fund_info['direction'],
+            '龙虎榜':       '是' if dragon_info.get('on_board') else '否',
         })
     
     # 按评分排序
@@ -305,6 +361,18 @@ def format_report_v3(results, index_data=None):
         market = f"{s['流通市值_亿']:.0f}亿"
         industry = s['行业']
         sector_chg = s['板块涨幅']
+        # 信号层标签
+        signal_tags = []
+        if s.get('题材'):
+            signal_tags.append(f"🎯{s['题材']}")
+        if s.get('资金方向') == 'inflow':
+            signal_tags.append(f"💰主力流入{s['主力净流入_万']:.0f}万")
+        elif s.get('资金方向') == 'outflow':
+            signal_tags.append(f"💸主力流出{abs(s['主力净流入_万']):.0f}万")
+        if s.get('龙虎榜') == '是':
+            signal_tags.append("🐉龙虎榜")
+        signal_line = f"   信号: {' | '.join(signal_tags)}\n" if signal_tags else ""
+        
         lines.append(
             f"{i}. **{s['name']}({s['code']})** {s['signal']}\n"
             f"   强势股池涨幅: ▲{s['池涨幅']}% | "
@@ -313,6 +381,7 @@ def format_report_v3(results, index_data=None):
             f"   行业: {industry}({sector_chg:+.2f}%) | "
             f"评分: {s['score']}分 | "
             f"是否新高: {s['是否新高']}\n"
+            f"{signal_line}"
             f"   当前价(参考): ¥{s['当前价']}\n\n"
         )
     

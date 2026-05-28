@@ -24,6 +24,16 @@ import requests
 import time as pytime
 import json
 
+# 信号数据服务（资金流+龙虎榜验证）
+try:
+    import sys as _sys
+    import os as _os
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    from services.signal import fund_flow_trend, dragon_tiger_check
+    SIGNAL_AVAILABLE = True
+except ImportError:
+    SIGNAL_AVAILABLE = False
+
 
 class TrendFollowingStrategy(BaseStrategy):
     """趋势跟踪策略 v2.0 — 多因子趋势评分"""
@@ -426,19 +436,52 @@ class TrendFollowingStrategy(BaseStrategy):
             mom_score > 0       # 有动量
         )
         
+        # === 信号层验证（新增） ===
+        fund_trend_info = {'net_5d_wan': 0, 'consecutive_inflow': 0, 'trend': 'unknown'}
+        dragon_info = {'on_board': False, 'score': 0, 'institution_net_wan': 0}
+        signal_bonus = 0
+        
+        if SIGNAL_AVAILABLE and buy_signal:
+            try:
+                # 资金流趋势验证（近5日主力净流入）
+                fund_trend_info = fund_flow_trend(code, days=5)
+                if fund_trend_info['trend'] == 'strong':
+                    signal_bonus += 10
+                elif fund_trend_info['trend'] == 'neutral':
+                    signal_bonus += 5
+                elif fund_trend_info['trend'] == 'weak':
+                    # 资金流出严重时降级信号
+                    if fund_trend_info['net_5d_wan'] < -5000:
+                        buy_signal = False
+            except Exception:
+                pass
+            
+            try:
+                # 龙虎榜验证（机构买入=强确认）
+                dragon_info = dragon_tiger_check(code)
+                if dragon_info.get('institution_net_wan', 0) > 1000:
+                    signal_bonus += 10  # 机构大买
+                elif dragon_info.get('on_board'):
+                    signal_bonus += 3   # 上榜但无机构
+            except Exception:
+                pass
+        
+        total_score += signal_bonus
+        
         # 动态止损价
         dynamic_stop = current_price * (1 + self.config['stop_loss'] / 100) if buy_signal else 0
         
         return {
             'buy_signal': buy_signal,
             'total_score': total_score,
-            'max_score': 100,
+            'max_score': 120,  # 基础100 + 信号层加分最高20
             'score_breakdown': {
                 'momentum': {'score': mom_score, 'max': 30, 'desc': mom_desc},
                 'volume': {'score': vol_score, 'max': 23, 'desc': vol_desc},
                 'ma_trend': {'score': ma_score, 'max': 20, 'desc': ma_desc},
                 'macd': {'score': macd_score, 'max': 15, 'desc': macd_desc},
                 'rsi': {'score': rsi_score, 'max': 15, 'desc': rsi_desc},
+                'signal_layer': {'score': signal_bonus, 'max': 20, 'desc': self._format_signal_desc(fund_trend_info, dragon_info)},
             },
             'metrics': {
                 'current_price': float(current_price),
@@ -449,6 +492,10 @@ class TrendFollowingStrategy(BaseStrategy):
                 'days_since_limit': days_since_limit,
                 'kline_confirm': kline_confirm,
                 'dynamic_stop_price': round(dynamic_stop, 2),
+                'fund_5d_net_wan': fund_trend_info.get('net_5d_wan', 0),
+                'fund_trend': fund_trend_info.get('trend', 'unknown'),
+                'dragon_tiger': dragon_info.get('on_board', False),
+                'institution_net_wan': dragon_info.get('institution_net_wan', 0),
             },
             'reason': self._format_signal_reason(
                 total_score, mom_desc, vol_desc, ma_desc,
@@ -466,6 +513,27 @@ class TrendFollowingStrategy(BaseStrategy):
         if kline_confirm:
             parts.append("K线确认")
         return " | ".join(parts[:6])
+    
+    def _format_signal_desc(self, fund_info: dict, dragon_info: dict) -> str:
+        """格式化信号层描述"""
+        parts = []
+        trend = fund_info.get('trend', 'unknown')
+        net = fund_info.get('net_5d_wan', 0)
+        if trend == 'strong':
+            parts.append(f"资金强势(5日净流入{net:.0f}万)")
+        elif trend == 'neutral':
+            parts.append(f"资金中性({net:.0f}万)")
+        elif trend == 'weak':
+            parts.append(f"资金流出({net:.0f}万)⚠️")
+        
+        if dragon_info.get('on_board'):
+            inst = dragon_info.get('institution_net_wan', 0)
+            if inst > 0:
+                parts.append(f"龙虎榜+机构买{inst:.0f}万")
+            else:
+                parts.append("龙虎榜上榜")
+        
+        return "；".join(parts) if parts else "无信号数据"
     
     # ═══════════════════════════════════════
     # 扫描候选
