@@ -88,7 +88,7 @@ class TrendFollowingStrategy(BaseStrategy):
                 'price': float(fields[3]) if fields[3] != '-' else 0,
                 'change_pct': float(fields[32]) if fields[32] != '-' else 0,
                 'turnover': float(fields[38]) if fields[38] != '-' else 0,
-                'volume_ratio': float(fields[39]) if fields[39] != '-' else 1.0,
+                'volume_ratio': float(fields[49]) if len(fields) > 49 and fields[49] != '-' else 1.0,
                 'pe': float(fields[39]) if fields[39] != '-' else 0,
                 'amount': float(fields[37]) if len(fields) > 37 and fields[37] != '-' else 0,
             }
@@ -505,7 +505,7 @@ class TrendFollowingStrategy(BaseStrategy):
         peak_retreat = (current_price - highest_since_buy) / highest_since_buy * 100 if highest_since_buy > cost_price else 0
         
         # 止损（无条件）
-        if profit_pct <= -cfg['stop_loss']:
+        if profit_pct <= cfg['stop_loss']:
             return True, f"止损触发：{profit_pct:.1f}%（≤{cfg['stop_loss']}%）"
         
         # 止盈

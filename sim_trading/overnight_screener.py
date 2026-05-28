@@ -98,7 +98,7 @@ def get_tencent_quotes(codes):
                     'low':     float(fields[34]) if fields[34] != '-' else 0,
                     'amount':  float(fields[37]) if fields[37] != '-' else 0,  # 成交额(元)
                     'turnover':float(fields[38]) if fields[38] != '-' else 0,  # 换手率%
-                    'change_pct': float(fields[31]) if fields[31] != '-' else 0,  # 涨跌幅%
+                    'change_pct': float(fields[32]) if fields[32] != '-' else 0,  # 涨跌幅%
                 }
             except (ValueError, IndexError):
                 continue
