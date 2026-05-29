@@ -410,7 +410,7 @@ def market_fullscan():
                     'price': r['price'],
                     'change_pct': r['change_pct'],
                     'turnover': r['turnover'],
-                    'circulate_mv_yi': r.get('circulate_mv_yi', 0),
+                    'circulate_mv_yi': r.get('circulate_mv', 0),
                     'volume_ratio': r['volume_ratio'],
                 })
             return jsonify({
@@ -431,6 +431,32 @@ def market_fullscan():
                     'turnover': r['turnover'], 'volume_ratio': r['volume_ratio'],
                 })
             return jsonify({'total': len(result), 'stocks': result})
+
+        elif mode == 'oversold':
+            # 超跌反弹策略用：获取跌幅靠前的股票
+            df = scan_market()
+            if df.empty:
+                return jsonify({'total': 0, 'candidates': []})
+            # 筛选条件：跌幅<0，流通市值50-200亿，非ST
+            filtered = df[
+                (df['change_pct'] < 0) &
+                (df['circulate_mv'] >= 50) &
+                (df['circulate_mv'] <= 200)
+            ].copy()
+            # 排除ST
+            filtered = filtered[~filtered['name'].str.contains('ST', na=False)]
+            # 按跌幅排序（跌最多的在前面）
+            filtered = filtered.nsmallest(50, 'change_pct')
+            result = []
+            for _, r in filtered.iterrows():
+                result.append({
+                    'code': r['code'], 'name': r['name'],
+                    'price': r['price'], 'change_pct': r['change_pct'],
+                    'turnover': r.get('turnover', 0),
+                    'circulate_mv_yi': r.get('circulate_mv', 0),
+                    'volume_ratio': r.get('volume_ratio', 0),
+                })
+            return jsonify({'total': len(result), 'candidates': result})
 
         else:
             return jsonify({'error': f'未知模式: {mode}'}), 400

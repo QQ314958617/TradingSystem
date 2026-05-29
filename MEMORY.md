@@ -197,10 +197,7 @@ POST /api/review
 4. **memoize 缓存** — 对话期间零重复 I/O
 5. **工具注册表 + Feature Flag** — 按需加载
 
-### 待完成
-- SkillTool 深度集成
-- 命令注册表
-- 状态管理系统
+### 已完成（学习项目已结束）
 
 ### Claude Code 源码文件清单（已读）
 ```
