@@ -536,11 +536,61 @@ class TrendFollowingStrategy(BaseStrategy):
         return "；".join(parts) if parts else "无信号数据"
     
     # ═══════════════════════════════════════
+    # 大盘环境过滤
+    # ═══════════════════════════════════════
+    
+    def _check_market_environment(self) -> bool:
+        """大盘环境检查：沪指站在5日线上方才允许开新仓
+        
+        2026-05-29校准：震荡市中趋势策略容易两面打脸，
+        加入大盘趋势过滤，沪指破MA5时不开新仓。
+        """
+        try:
+            resp = requests.get('http://localhost/api/index', timeout=10)
+            if resp.status_code != 200:
+                # API失败时保守处理：不开仓
+                return False
+            data = resp.json()
+            # 找沪指数据
+            sh_index = None
+            if isinstance(data, list):
+                for item in data:
+                    if item.get('code') in ('000001', 'sh000001', '1.000001'):
+                        sh_index = item
+                        break
+                if not sh_index and data:
+                    sh_index = data[0]  # 默认取第一个
+            elif isinstance(data, dict):
+                sh_index = data
+            
+            if not sh_index:
+                return False
+            
+            price = float(sh_index.get('price', 0))
+            ma5 = float(sh_index.get('ma5', 0))
+            
+            if price <= 0 or ma5 <= 0:
+                return False
+            
+            if price < ma5:
+                # 沪指在MA5下方，不开新仓
+                return False
+            
+            return True
+        except Exception:
+            # 异常时保守处理
+            return False
+    
+    # ═══════════════════════════════════════
     # 扫描候选
     # ═══════════════════════════════════════
     
     def scan_stocks(self) -> list:
         """扫描市场，返回最佳候选"""
+        # 2026-05-29校准：大盘环境过滤，沪指破5日线时不开新仓
+        if not self._check_market_environment():
+            return []
+        
         candidates = self._get_hot_stocks_from_pool()
         if not candidates:
             return []

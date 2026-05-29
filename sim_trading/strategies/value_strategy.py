@@ -52,7 +52,7 @@ class ValueInvestingStrategy(BaseStrategy):
             'clear_trigger_gain': 25.0,    # 清仓触发：涨+25%全卖
             
             # 卖出规则
-            'stop_loss': -8.0,             # 中线止损
+            'stop_loss': -7.0,             # 中线止损（2026-05-29收紧：-8%→-7%）
             'target_pe': 28,               # 目标PE止盈
             'max_hold_days': 90,           # 最长持有天数
             'recheck_interval_days': 14,   # 每两周重新评估
