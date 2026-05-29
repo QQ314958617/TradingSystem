@@ -622,7 +622,13 @@ class TrendFollowingStrategy(BaseStrategy):
         profit_pct = (current_price - cost_price) / cost_price * 100
         peak_retreat = (current_price - highest_since_buy) / highest_since_buy * 100 if highest_since_buy > cost_price else 0
         
-        # 止损（无条件）
+        # 保本机制：浮盈曾超+5%后，止损线上移到成本价
+        # 一旦赚过5%，最差也要保本出局，不允许从盈利变亏损
+        ever_profitable_5pct = highest_since_buy > cost_price * 1.05
+        if ever_profitable_5pct and profit_pct <= 0:
+            return True, f"保本止损：曾盈利超5%（高点{highest_since_buy:.2f}），现回落至成本线（{profit_pct:+.1f}%）"
+        
+        # 止损（无条件）—— 仅在未触发保本机制时生效
         if profit_pct <= cfg['stop_loss']:
             return True, f"止损触发：{profit_pct:.1f}%（≤{cfg['stop_loss']}%）"
         
@@ -633,6 +639,10 @@ class TrendFollowingStrategy(BaseStrategy):
         # 从高点回撤
         if peak_retreat <= cfg['peak_retreat']:
             return True, f"高位回撤{peak_retreat:.1f}%（≤{cfg['peak_retreat']}%）"
+        
+        # 时间衰减：持仓超7天且从高点回落3%，说明动能衰竭
+        if hold_days >= 7 and current_price < highest_since_buy * 0.97:
+            return True, f"时间衰减：持仓{hold_days}天，从高点回落{((current_price - highest_since_buy) / highest_since_buy * 100):.1f}%，动能不足"
         
         # 超时
         if hold_days >= cfg['max_hold_days']:

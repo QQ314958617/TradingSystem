@@ -340,8 +340,12 @@ class ValueInvestingStrategy(BaseStrategy):
             failures.append(f"PEG={peg:.2f} > {self.config['peg_max']}（成长不足以支撑估值）")
         if roe_val < self.config['roe_min'] and roe_val > 0:
             failures.append(f"ROE={roe_val:.1f}% < {self.config['roe_min']}%")
+        if roe_val <= 0:
+            failures.append(f"ROE={roe_val:.1f}% ≤ 0，不符合价值投资标准")
         if rev_growth is not None and rev_growth < self.config['revenue_growth_min']:
             failures.append(f"营收增长{rev_growth:.1f}%，负增长")
+        if prof_growth is not None and prof_growth < 0:
+            failures.append(f"净利润增长{prof_growth:.1f}%，负增长（价值陷阱风险）")
         if debt_ratio is not None and debt_ratio > self.config['debt_ratio_max']:
             failures.append(f"负债率{debt_ratio:.1f}% > {self.config['debt_ratio_max']}%")
         
