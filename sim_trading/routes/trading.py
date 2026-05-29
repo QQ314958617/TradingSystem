@@ -354,10 +354,11 @@ def position_manage():
             suggestion['reason'] = reduce_result['reason']
             suggestion['sell_shares'] = reduce_result['sell_shares']
         
-        # 检查止损
-        if gain_pct <= -8.0:
+        # 检查止损（读取策略配置，不硬编码）
+        stop_loss_pct = strategy.config.get('stop_loss', -7.0)
+        if gain_pct <= stop_loss_pct:
             suggestion['action'] = 'stop_loss'
-            suggestion['reason'] = f'止损触发：亏损{gain_pct:.1f}%'
+            suggestion['reason'] = f'止损触发：亏损{gain_pct:.1f}%（阈值{stop_loss_pct}%）'
         
         suggestions.append(suggestion)
     
