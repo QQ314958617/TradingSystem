@@ -163,10 +163,10 @@ def execute_trade():
         commission = calc_buy_commission(amount)
         cost = amount + commission
 
-        # === 一夜持股法单票上限¥10,000硬限制 (2026-05-29) ===
-        if strategy_id == 1 and amount > 10000:
+        # === 一夜持股法单票上限¥30,000硬限制 (2026-05-29) ===
+        if strategy_id == 1 and amount > 30000:
             return jsonify({
-                "error": f"一夜持股法单票上限¥10,000！本次金额¥{amount:.0f}超限。请减少股数。"
+                "error": f"一夜持股法单票上限¥30,000！本次金额¥{amount:.0f}超限。请减少股数。"
             }), 400
 
         if cost > account['cash']:

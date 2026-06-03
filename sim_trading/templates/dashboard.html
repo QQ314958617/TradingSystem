@@ -368,7 +368,7 @@ tr:hover td { background: rgba(255,255,255,0.015); color: var(--text-primary); }
                 <td><span class="badge badge-neutral" style="font-size:9px" x-text="strategyName(t.strategy_id)"></span></td>
                 <td class="mono" x-text="'¥'+Number(t.price).toFixed(2)"></td>
                 <td class="mono" x-text="t.shares"></td>
-                <td class="mono" :class="(t.profit||0)>=0?'up':'down'" x-text="t.action==='sell'?((t.profit>=0?'+':'')+Number(t.profit).toFixed(0)):'-'"></td>
+                <td class="mono" :class="(t.profit||0)>=0?'up':'down'" x-text="t.action==='sell'?((t.profit>=0?'+':'')+Number(t.profit).toFixed(0)+' ('+((t.profit/(t.amount-t.profit))*100).toFixed(2)+'%)'):'-'"></td>
               </tr>
             </template>
           </tbody>

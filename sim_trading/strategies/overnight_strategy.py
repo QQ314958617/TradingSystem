@@ -34,6 +34,8 @@ class OvernightStrategy(BaseStrategy):
             'stop_loss': -2.0,        # 止损%
             'take_profit_min': 5.0,   # 止盈下限%
             'take_profit_max': 8.0,   # 止盈上限%
+            'max_positions': 3,       # 最多同时持3只
+            'position_size': 30000,   # 单票建仓¥30,000
             'buy_time_start': '14:50',  # 买入窗口开始
             'buy_time_end': '14:55',    # 买入窗口结束
             'sell_time_start': '09:30', # 卖出窗口开始
