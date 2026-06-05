@@ -343,24 +343,24 @@ def add_trade(action, stock_code, stock_name, price, shares, amount, commission=
         return c.lastrowid
 
 def get_trades(limit=100, offset=0, strategy_id=None):
-    """获取交易记录(支持分页+策略过滤)"""
+    """获取交易记录(支持分页+策略过滤，排除monitor监控记录)"""
     with get_connection() as conn:
         c = conn.cursor()
         if strategy_id:
-            c.execute('SELECT * FROM trades WHERE strategy_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?', (strategy_id, limit, offset))
+            c.execute("SELECT * FROM trades WHERE strategy_id = ? AND action != 'monitor' ORDER BY timestamp DESC LIMIT ? OFFSET ?", (strategy_id, limit, offset))
         else:
-            c.execute('SELECT * FROM trades ORDER BY timestamp DESC LIMIT ? OFFSET ?', (limit, offset))
+            c.execute("SELECT * FROM trades WHERE action != 'monitor' ORDER BY timestamp DESC LIMIT ? OFFSET ?", (limit, offset))
         return [dict(row) for row in c.fetchall()]
 
 
 def get_trades_count(strategy_id=None):
-    """获取交易记录总数"""
+    """获取交易记录总数(排除monitor监控记录)"""
     with get_connection() as conn:
         c = conn.cursor()
         if strategy_id:
-            c.execute('SELECT COUNT(*) FROM trades WHERE strategy_id = ?', (strategy_id,))
+            c.execute("SELECT COUNT(*) FROM trades WHERE strategy_id = ? AND action != 'monitor'", (strategy_id,))
         else:
-            c.execute('SELECT COUNT(*) FROM trades')
+            c.execute("SELECT COUNT(*) FROM trades WHERE action != 'monitor'")
         return c.fetchone()[0]
 
 # ========== 复盘记录 ==========
