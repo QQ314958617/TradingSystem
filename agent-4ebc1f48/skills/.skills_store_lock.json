@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "skills": {
+    "cloudbase": {
+      "name": "Cloudbase",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=cloudbase",
+      "source": "community",
+      "version": "1.92.0",
+      "installedAt": "2026-06-09T11:35:16Z"
+    },
+    "playwright-cli-openclaw": {
+      "name": "Playwright CLI Automation",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=playwright-cli-openclaw",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-09T11:35:17Z"
+    }
+  }
+}

@@ -17,19 +17,19 @@ analysis_bp = Blueprint('analysis', __name__)
 
 @analysis_bp.route('/api/analyze/<stock_code>')
 def analyze_stock(stock_code):
-    """巴菲特价值投资分析报告（支持代码或名称查询）"""
-    import buffett_analyzer as ba
+    """价值投资分析报告v2.0（整合价值评估师框架）"""
+    import value_analyzer as va
     try:
         if not stock_code.isdigit():
             match = re.search(r'\(?(\d{6})\)?', stock_code)
             if match:
                 stock_code = match.group(1)
             else:
-                code = ba.get_code_by_name(stock_code)
+                code = va.get_code_by_name(stock_code)
                 if not code:
                     return jsonify({'error': f'未找到股票：{stock_code}'}), 404
                 stock_code = code
-        report = ba.build_report(stock_code)
+        report = va.analyze_stock(stock_code)
         return jsonify(report)
     except Exception as e:
         traceback.print_exc()
@@ -39,11 +39,11 @@ def analyze_stock(stock_code):
 @analysis_bp.route('/api/search')
 def search_stocks():
     """股票搜索（名称或代码模糊匹配）"""
-    import buffett_analyzer as ba
+    import value_analyzer as va
     keyword = request.args.get('q', '').strip()
     if not keyword or len(keyword) < 1:
         return jsonify([])
-    results = ba.search_stocks(keyword)
+    results = va.search_stocks(keyword)
     return jsonify(results)
 
 
