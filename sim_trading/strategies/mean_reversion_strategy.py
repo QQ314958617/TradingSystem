@@ -31,10 +31,10 @@ class MeanReversionStrategy(BaseStrategy):
         super().__init__(strategy_id, config)
         self.config = {
             # 入场条件
-            'rsi2_entry': 10,              # RSI(2) < 此值买入
+            'rsi2_entry': 20,              # RSI(2) < 此值买入（↑原10，牛市切换为回调买入模式）
             'ma200_filter': True,          # 大盘200日均线过滤
             'market_cap_min': 50,          # 流通市值下限(亿)
-            'market_cap_max': 200,         # 流通市值上限(亿)
+            'market_cap_max': 500,         # 流通市值上限(亿)（↑原200，接住大盘科技）
             'min_volume': 500000,          # 最小成交量(手)
             'exclude_st': True,            # 排除ST
             'exclude_new': True,           # 排除次新(上市<60天)

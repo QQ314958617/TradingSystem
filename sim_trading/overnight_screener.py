@@ -54,13 +54,13 @@ except ImportError:
 class Config:
     # 涨幅区间（%）：3%-5%
     RISE_MIN = 3.0
-    RISE_MAX = 5.0
-    # 换手率区间（%）：3%-10%
-    TURNOVER_MIN = 3.0
-    TURNOVER_MAX = 10.0
-    # 流通市值（亿元）：50-200亿
-    MARKET_CAP_MIN = 50
-    MARKET_CAP_MAX = 200
+    RISE_MAX = 10.0  # ↑原5.0，牛市放宽
+    # 换手率区间（%）：2%-15%
+    TURNOVER_MIN = 2.0  # ↓原3.0
+    TURNOVER_MAX = 15.0 # ↑原10.0
+    # 流通市值（亿元）：30-500亿
+    MARKET_CAP_MIN = 30 # ↓原50
+    MARKET_CAP_MAX = 500# ↑原200
     # 选股时间窗口（尾盘）：14:50-14:55
     SCREEN_START = "14:50"
     SCREEN_END = "14:55"

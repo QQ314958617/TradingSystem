@@ -22,18 +22,18 @@ class OvernightStrategy(BaseStrategy):
     def __init__(self, strategy_id: int, config: dict = None):
         super().__init__(strategy_id, config)
         self.config = {
-            'rise_min': 3.0,          # 最小涨幅%
-            'rise_max': 5.0,          # 最大涨幅%
+            'rise_min': 3.0,          # 最小涨幅%（牛市放宽至3-10%，容纳更强走势）
+            'rise_max': 10.0,         # 最大涨幅%（↑原5%，牛市龙头常涨8%+）
             'rsi_min': 40,            # RSI下限
-            'rsi_max': 65,            # RSI上限
-            'turnover_min': 3.0,      # 换手率下限%
-            'turnover_max': 10.0,     # 换手率上限%
-            'volume_ratio_min': 1.5,  # 成交量放大倍数
-            'market_cap_min': 50,     # 流通市值下限(亿)
-            'market_cap_max': 200,    # 流通市值上限(亿)
+            'rsi_max': 80,            # RSI上限（↑原65，强势趋势股RSI可达70-80）
+            'turnover_min': 2.0,      # 换手率下限%（↓原3%，让部分温和放量股进来）
+            'turnover_max': 15.0,     # 换手率上限%（↑原10%，牛市龙头换手率高）
+            'volume_ratio_min': 1.2,  # 成交量放大倍数（↓原1.5，牛市中主流股保持均量）
+            'market_cap_min': 30,     # 流通市值下限(亿)（↓原50，让中小盘也能入选）
+            'market_cap_max': 500,    # 流通市值上限(亿)（↑原200，容纳科技中盘龙头）
             'stop_loss': -2.0,        # 止损%
-            'take_profit_min': 5.0,   # 止盈下限%
-            'take_profit_max': 8.0,   # 止盈上限%
+            'take_profit_min': 4.0,   # 止盈下限%（↓原5%，牛市波动大适度降低预期）
+            'take_profit_max': 10.0,  # 止盈上限%（↑原8%，牛市冲高空间更大）
             'max_positions': 3,       # 最多同时持3只
             'position_size': 30000,   # 单票建仓¥30,000
             'buy_time_start': '14:50',  # 买入窗口开始

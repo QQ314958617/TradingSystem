@@ -35,10 +35,10 @@ class ValueInvestingStrategy(BaseStrategy):
         super().__init__(strategy_id, config)
         self.config = {
             # 买入门槛（必须全部满足）
-            'pe_max': 20,                  # PE上限
-            'peg_max': 1.5,                # PEG上限
+            'pe_max': 30,                  # PE上限（↑原20，容纳科技成长型价值股，牛市PE中枢上移）
+            'peg_max': 2.0,                # PEG上限（↑原1.5，成长股合理PEG可到2）
             'roe_min': 12.0,               # ROE下限%
-            'roe_years': 4,                # ROE连续达标年数
+            'roe_years': 3,                # ROE连续达标年数（↓原4，对新晋优质股减1年）
             'revenue_growth_min': 0,       # 营收增长最低（排除衰退）
             'profit_growth_min': 0,        # 利润增长最低
             'debt_ratio_max': 65.0,        # 负债率上限%
@@ -53,7 +53,7 @@ class ValueInvestingStrategy(BaseStrategy):
             
             # 卖出规则
             'stop_loss': -7.0,             # 中线止损（2026-05-29收紧：-8%→-7%）
-            'target_pe': 28,               # 目标PE止盈
+            'target_pe': 40,               # 目标PE止盈（↑原28，科技成长股合理PE更高）
             'max_hold_days': 90,           # 最长持有天数
             'recheck_interval_days': 14,   # 每两周重新评估
             
@@ -180,16 +180,16 @@ class ValueInvestingStrategy(BaseStrategy):
     # ─── 评分体系 ───
     
     def _score_pe(self, pe_val: float) -> tuple:
-        """PE估值评分（满分30）"""
-        if pe_val <= 8:
+        """PE估值评分（满分30）—— 牛市版，上沿放宽至30倍"""
+        if pe_val <= 10:
             return 30, f"PE={pe_val:.1f} ⭐ 极度低估"
-        elif pe_val <= 10:
+        elif pe_val <= 15:
             return 27, f"PE={pe_val:.1f} ✅ 明显低估"
-        elif pe_val <= 13:
-            return 23, f"PE={pe_val:.1f} ✅ 合理偏低"
-        elif pe_val <= 16:
-            return 18, f"PE={pe_val:.1f} ✅ 合理估值"
         elif pe_val <= 20:
+            return 23, f"PE={pe_val:.1f} ✅ 合理偏低"
+        elif pe_val <= 25:
+            return 18, f"PE={pe_val:.1f} ✅ 合理估值"
+        elif pe_val <= 30:
             return 12, f"PE={pe_val:.1f} ⚠️ 接近上限"
         else:
             return 0, f"PE={pe_val:.1f} ❌ 超过{self.config['pe_max']}倍"

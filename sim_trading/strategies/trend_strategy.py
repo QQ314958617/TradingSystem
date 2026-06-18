@@ -47,7 +47,7 @@ class TrendFollowingStrategy(BaseStrategy):
         self.config = {
             # 选股参数
             'min_days_since_limitup': 3,   # 涨停后至少等N天
-            'max_recent_pct': 18,          # 最近5日涨幅上限（略有放宽，容纳急涨趋势股如宏和科技）
+            'max_recent_pct': 30,          # 最近5日涨幅上限（↑原18，牛市强势股5日涨20%+很常见）
             'min_recent_pct': 3,           # 最近5日涨幅下限（要有趋势）
             
             # 多因子权重
@@ -59,7 +59,7 @@ class TrendFollowingStrategy(BaseStrategy):
             
             # 趋势确认
             'volume_ratio_min': 1.0,       # 放量倍数（放宽至1.0，允许缩量趋势如杰瑞股份）
-            'rsi_max': 82,                 # RSI上限（放宽至82，容纳强势趋势股）
+            'rsi_max': 92,                 # RSI上限（↑原82，牛市龙头RSI常在85-92运行）
             'rsi_min': 40,                 # RSI下限（有动力）
             
             # 退出规则
@@ -222,8 +222,8 @@ class TrendFollowingStrategy(BaseStrategy):
                     pct = float(s.get('f3', 0) if s.get('f3') is not None else 0)
                     name = str(s.get('f14', ''))
                     turnover = float(s.get('f8', 0) if s.get('f8') else 0)
-                    # 过滤：涨幅3%-10%（排除涨停和太弱的）+ 换手率3%-20%
-                    if 2.5 <= pct <= 10 and 3 <= turnover <= 25:
+                    # 过滤：涨幅2.5%-18%（↑原10%，牛市龙头常涨12-18%不等涨停）+ 换手率2%-25%
+                    if 2.5 <= pct <= 18 and 2 <= turnover <= 25:
                         candidates.append({'code': code, 'name': name, 'pct': pct, 'turnover': turnover})
         except Exception:
             pass
@@ -244,7 +244,7 @@ class TrendFollowingStrategy(BaseStrategy):
                         code = str(s.get('f12', '')).strip().zfill(6)
                         pct = float(s.get('f3', 0) if s.get('f3') is not None else 0)
                         name = str(s.get('f14', ''))
-                        if 2.5 <= pct <= 10:
+                        if 2.5 <= pct <= 18:
                             if code not in [c['code'] for c in candidates]:
                                 candidates.append({'code': code, 'name': name, 'pct': pct})
             except Exception:
@@ -403,14 +403,14 @@ class TrendFollowingStrategy(BaseStrategy):
         closes = df['收盘'].values
         rsi = self._calc_rsi(closes)
         
-        if rsi >= 88:
+        if rsi >= 95:
             return 0, f"RSI={rsi:.0f} ❌ 严重超买"
         elif rsi >= cfg['rsi_max']:
             return 0, f"RSI={rsi:.0f} ❌ 过热（>{cfg['rsi_max']}）"
-        elif rsi >= 60:
+        elif rsi >= 70:
             score = 15
             desc = f"RSI={rsi:.0f} ⭐ 强势区间"
-        elif rsi >= 50:
+        elif rsi >= 55:
             score = 12
             desc = f"RSI={rsi:.0f} ✅ 偏强"
         elif rsi >= cfg['rsi_min']:
