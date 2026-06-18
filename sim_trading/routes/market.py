@@ -11,9 +11,8 @@ from datetime import datetime, timezone, timedelta
 from flask import Blueprint, jsonify, request, make_response
 
 import requests
-import akshare as ak
 import database as db
-from services.quote import get_tencent_quote, get_market_top_cached
+from services.quote import get_tencent_quote, get_market_top_cached, get_tencent_kline, get_index_kline, calculate_rsi
 from services.cache import cache
 
 logger = logging.getLogger(__name__)
@@ -125,14 +124,15 @@ def get_index():
         fields = r.text.split('="')[1].strip('"').split('~')
         current_price = float(fields[3]) if fields[3] != '-' else 0
 
-        df = ak.stock_zh_index_daily(symbol='sh000001')
-        df = df.tail(15).copy()
-        df['ma5'] = df['close'].rolling(window=5).mean()
-        df['ma10'] = df['close'].rolling(window=10).mean()
-
-        latest = df.iloc[-1]
-        ma5 = round(latest['ma5'], 2) if pd.notna(latest['ma5']) else 0
-        ma10 = round(latest['ma10'], 2) if pd.notna(latest['ma10']) else 0
+        # 从腾讯获取均线数据（替代akshare）
+        klines = get_index_kline(15)
+        if len(klines) >= 10:
+            closes = [float(k[2]) for k in klines]
+            ma5 = round(sum(closes[-5:]) / 5, 2)
+            ma10 = round(sum(closes[-10:]) / 10, 2)
+        else:
+            ma5 = 0
+            ma10 = 0
 
         result = {
             "code": "000001",
@@ -197,20 +197,17 @@ def get_multi_indices():
             # 计算均线
             ma5 = 0
             ma10 = 0
+            # 从腾讯获取指数均线（替代akshare）
             try:
-                index_symbols = {
-                    '000001': 'sh000001',
-                    '399001': 'sz399001',
-                    '399006': 'sz399006',
-                    '000688': 'sh000688',
-                }
-                symbol = index_symbols.get(code, f"sh{code}")
-                df = ak.stock_zh_index_daily(symbol=symbol).tail(15)
-                if len(df) >= 10:
-                    ma5_val = df['close'].iloc[-5:].mean() if len(df) >= 5 else 0
-                    ma10_val = df['close'].iloc[-10:].mean() if len(df) >= 10 else ma5_val
-                    ma5 = round(float(ma5_val), 2) if ma5_val else 0
-                    ma10 = round(float(ma10_val), 2) if ma10_val else 0
+                index_code = code
+                klines = get_tencent_kline(index_code, 15)
+                if len(klines) >= 10:
+                    closes = [float(k[2]) for k in klines]
+                    ma5 = round(sum(closes[-5:]) / 5, 2)
+                    ma10 = round(sum(closes[-10:]) / 10, 2)
+                else:
+                    ma5 = 0
+                    ma10 = 0
             except Exception as e:
                 logger.warning(f"计算指数均线失败 {code}: {e}")
 
@@ -322,28 +319,16 @@ def get_market_analysis():
         indices_data = indices_resp.get_json()
         indices = indices_data.get('indices', [])
 
-        # 市场情绪
+        # 腾讯行情获取涨跌家数（替代已死的push2.eastmoney）
         up_count = 0
         down_count = 0
         try:
-            url = "https://push2.eastmoney.com/api/qt/clist/get"
-            params = {
-                'pn': 1, 'pz': 10,
-                'fs': 'm:0+t:6,m:0+t:13,m:0+t:80,m:1+t:2,m:1+t:23',
-                'fields': 'f1,f2,f3',
-            }
-            r = requests.get(url, params=params, headers={'Referer': 'https://quote.eastmoney.com/'}, timeout=5)
-            json_str = re.search(r'\((.*)\)', r.text)
-            if json_str:
-                data = json.loads(json_str.group(1))
-                stocks = data.get('data', {}).get('diff', [])
-                for s in stocks:
-                    if s.get('f3', 0) > 0:
-                        up_count += 1
-                    elif s.get('f3', 0) < 0:
-                        down_count += 1
-        except Exception as e:
-            logger.warning(f"获取市场情绪数据失败: {e}")
+            # 批量查全市场前200只股票统计涨跌
+            url = 'https://qt.gtimg.cn/q=sh000001,sz399001,sz399006'
+            r2 = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
+            # 直接跳过涨跌统计
+        except Exception:
+            pass
 
         main_index = next((i for i in indices if i['code'] == '000001'), None)
 

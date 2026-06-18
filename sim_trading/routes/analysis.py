@@ -7,12 +7,14 @@ import traceback
 from datetime import datetime
 from flask import Blueprint, jsonify, request
 
-import akshare as ak
 import database as db
 
 logger = logging.getLogger(__name__)
 
 analysis_bp = Blueprint('analysis', __name__)
+
+# 腾讯K线替代akshare
+from services.quote import get_tencent_kline, calculate_rsi
 
 
 @analysis_bp.route('/api/analyze/<stock_code>')
@@ -59,16 +61,15 @@ def get_indicators(stock_code):
         )
 
         try:
-            symbol = f"sh{stock_code}" if stock_code.startswith(('6', '5')) else f"sz{stock_code}"
-            df = ak.stock_zh_a_hist(symbol=symbol, period="daily", adjust="qfq").tail(60)
-
-            if df.empty or len(df) < 20:
+            klines = get_tencent_kline(stock_code, 60)
+            if len(klines) < 20:
                 return jsonify({"error": "数据不足"}), 400
 
-            close = df['收盘'].tolist()
-            high = df['最高'].tolist()
-            low = df['最低'].tolist()
-            volume = df['成交量'].tolist()
+            # 腾讯K线格式: [日期, 开盘, 收盘, 最高, 最低, 成交量, ...]
+            close = [float(k[2]) for k in klines]
+            high = [float(k[3]) for k in klines]
+            low = [float(k[4]) for k in klines]
+            volume = [float(k[5]) for k in klines]
         except Exception as e:
             return jsonify({"error": f"获取数据失败: {str(e)}"}), 500
 
@@ -78,7 +79,7 @@ def get_indicators(stock_code):
             "high": high[-1],
             "low": low[-1],
             "volume": volume[-1],
-            "date": str(df.iloc[-1]['日期']),
+            "date": klines[-1][0],
         }
 
         rsi = calculate_rsi(close)

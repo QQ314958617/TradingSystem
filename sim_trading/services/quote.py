@@ -170,3 +170,45 @@ def preload_market_data():
 
     t = threading.Thread(target=_load, daemon=True)
     t.start()
+
+
+def get_tencent_kline(stock_code: str, days: int = 60) -> list:
+    """从腾讯获取日K线（替代akshare）
+    
+    返回: [['日期','开盘','收盘','最高','最低','成交量',...], ...]
+    """
+    prefix = 'sh' if stock_code.startswith(('6', '5')) or stock_code == '000001' else 'sz'
+    for retry in range(3):
+        try:
+            url = f'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={prefix}{stock_code},day,,,{days},qfq'
+            r = requests.get(url, headers=_HEADERS, timeout=10)
+            data = r.json()
+            kd = data.get('data', {}).get(f'{prefix}{stock_code}', {})
+            klines = kd.get('qfqday') or kd.get('day')
+            if klines:
+                return klines
+        except Exception:
+            if retry < 2:
+                time.sleep(1)
+            continue
+    return []
+
+
+def get_index_kline(days: int = 30) -> list:
+    """获取上证指数K线（腾讯替代akshare）"""
+    return get_tencent_kline('000001', days)
+
+
+def calculate_rsi(closes: list, period: int = 14) -> float:
+    """计算RSI"""
+    import numpy as np
+    if len(closes) < period + 1:
+        return 50.0
+    deltas = np.diff(closes[-period-1:])
+    gains = np.where(deltas > 0, deltas, 0)
+    losses = np.where(deltas < 0, -deltas, 0)
+    avg_gain = np.mean(gains)
+    avg_loss = np.mean(losses)
+    if avg_loss == 0:
+        return 100.0
+    return 100 - (100 / (1 + avg_gain / avg_loss))

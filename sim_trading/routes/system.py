@@ -7,10 +7,9 @@ import logging
 from datetime import datetime, date, timedelta, timezone
 from flask import Blueprint, jsonify, request, render_template, make_response, send_from_directory
 
-import akshare as ak
 import requests
 import database as db
-from services.quote import get_tencent_quote
+from services.quote import get_tencent_quote, get_index_kline, get_tencent_kline
 from services.cache import cache
 from config import STAR_OFFICE_STATE_FILE
 
@@ -86,13 +85,14 @@ def get_dashboard():
         fields = r.text.split('="')[1].strip('"').split('~')
         current_price = float(fields[3]) if fields[3] != '-' else 0
         try:
-            df = ak.stock_zh_index_daily(symbol='sh000001')
-            df = df.tail(15).copy()
-            df['ma5'] = df['close'].rolling(window=5).mean()
-            df['ma10'] = df['close'].rolling(window=10).mean()
-            latest = df.iloc[-1]
-            ma5 = round(latest['ma5'], 2) if pd.notna(latest['ma5']) else 0
-            ma10 = round(latest['ma10'], 2) if pd.notna(latest['ma10']) else 0
+            klines = get_index_kline(15)
+            if len(klines) >= 10:
+                closes = [float(k[2]) for k in klines]
+                ma5 = round(sum(closes[-5:]) / 5, 2)
+                ma10 = round(sum(closes[-10:]) / 10, 2)
+            else:
+                ma5 = current_price
+                ma10 = current_price
         except Exception:
             ma5 = current_price
             ma10 = current_price

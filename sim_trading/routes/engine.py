@@ -6,10 +6,8 @@ from datetime import datetime, timezone, timedelta
 from flask import Blueprint, jsonify, request
 
 import requests
-import akshare as ak
 import database as db
-from services.quote import get_tencent_quote, get_market_top_cached
-from services.cache import cache
+from services.quote import get_tencent_quote, get_market_top_cached, get_tencent_kline, get_index_kline, calculate_rsi
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +37,16 @@ def _get_index_data_cached():
                 "change_pct": change_pct,
             }
 
-        # 重新计算均线
+        # 重新计算均线（腾讯K线替代akshare）
         try:
-            df = ak.stock_zh_index_daily(symbol='sh000001')
-            df = df.tail(15).copy()
-            df['ma5'] = df['close'].rolling(window=5).mean()
-            df['ma10'] = df['close'].rolling(window=10).mean()
-            latest = df.iloc[-1]
-            ma5 = round(latest['ma5'], 2) if pd.notna(latest['ma5']) else 0
-            ma10 = round(latest['ma10'], 2) if pd.notna(latest['ma10']) else 0
+            klines = get_index_kline(15)
+            if len(klines) >= 10:
+                closes = [float(k[2]) for k in klines]
+                ma5 = round(sum(closes[-5:]) / 5, 2)
+                ma10 = round(sum(closes[-10:]) / 10, 2)
+            else:
+                ma5 = 0
+                ma10 = 0
         except Exception:
             ma5 = 0
             ma10 = 0
@@ -248,9 +247,9 @@ def engine_run():
                 # RSI超买预警
                 try:
                     symbol = f"sh{code}" if code.startswith(('6', '5')) else f"sz{code}"
-                    df = ak.stock_zh_a_hist(symbol=symbol, period="daily", adjust="qfq").tail(20)
-                    if len(df) >= 15:
-                        prices = df['收盘'].tolist()
+                    klines = get_tencent_kline(code, 20)
+                    if len(klines) >= 15:
+                        prices = [float(k[2]) for k in klines]
                         rsi = calculate_rsi(prices)
                         if rsi and rsi > 70:
                             alerts.append(f"{pos.get('name', pos.get('stock_name', code))} RSI={rsi}，注意超买风险！")
@@ -339,8 +338,8 @@ def market_scan():
             price = float(fields[3]) if fields[3] != '-' else 0
 
             try:
-                df = ak.stock_zh_index_daily(symbol='sh000001')
-                closes = df['close'].tail(20).tolist()
+                klines = get_index_kline(20)
+                closes = [float(k[2]) for k in klines]
                 ma5 = sum(closes[-5:]) / 5 if len(closes) >= 5 else 0
                 ma10 = sum(closes[-10:]) / 10 if len(closes) >= 10 else 0
             except Exception:
@@ -411,9 +410,9 @@ def market_scan():
                     rsi_value = None
                     try:
                         symbol = f"sh{code}" if code.startswith(('6', '5')) else f"sz{code}"
-                        df = ak.stock_zh_a_hist(symbol=symbol, period="daily", adjust="qfq").tail(20)
-                        if len(df) >= 15:
-                            prices = df['收盘'].tolist()
+                        klines = get_tencent_kline(code, 20)
+                        if len(klines) >= 15:
+                            prices = [float(k[2]) for k in klines]
                             rsi_value = calculate_rsi(prices)
                     except Exception:
                         pass
