@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "ai-stock-analyst": {
+      "name": "AI Stock Analyst",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=ai-stock-analyst",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-12T09:08:22Z"
+    },
+    "investlog-ai": {
+      "name": "InvestLog AI",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=investlog-ai",
+      "source": "community",
+      "version": "1.0.2",
+      "installedAt": "2026-06-12T09:08:23Z"
+    },
+    "stock-research-engine": {
+      "name": "stock-research-engine",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=stock-research-engine",
+      "source": "community",
+      "version": "3.0.0",
+      "installedAt": "2026-06-12T09:08:24Z"
+    },
+    "industry-research-analyst": {
+      "name": "Industry Research Analyst 行业研究分析师",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=industry-research-analyst",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-12T09:08:26Z"
+    },
+    "valuation-analysis": {
+      "name": "股票价值投资分析系统",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=valuation-analysis",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-12T09:08:27Z"
+    },
+    "finance-research-report": {
+      "name": "Skill Fin Report",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=finance-research-report",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-12T09:08:29Z"
+    }
+  }
+}

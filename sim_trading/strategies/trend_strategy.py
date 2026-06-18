@@ -47,7 +47,7 @@ class TrendFollowingStrategy(BaseStrategy):
         self.config = {
             # 选股参数
             'min_days_since_limitup': 3,   # 涨停后至少等N天
-            'max_recent_pct': 15,          # 最近5日涨幅上限（不追太高）
+            'max_recent_pct': 18,          # 最近5日涨幅上限（略有放宽，容纳急涨趋势股如宏和科技）
             'min_recent_pct': 3,           # 最近5日涨幅下限（要有趋势）
             
             # 多因子权重
@@ -58,8 +58,8 @@ class TrendFollowingStrategy(BaseStrategy):
             'w_rsi': 15,                   # RSI位置
             
             # 趋势确认
-            'volume_ratio_min': 1.3,       # 放量倍数
-            'rsi_max': 73,                 # RSI上限（不过热）
+            'volume_ratio_min': 1.0,       # 放量倍数（放宽至1.0，允许缩量趋势如杰瑞股份）
+            'rsi_max': 82,                 # RSI上限（放宽至82，容纳强势趋势股）
             'rsi_min': 40,                 # RSI下限（有动力）
             
             # 退出规则
@@ -106,14 +106,39 @@ class TrendFollowingStrategy(BaseStrategy):
             return {}
     
     def _get_kline(self, code: str, days: int = 120) -> pd.DataFrame:
-        """获取日K线（带重试）"""
+        """获取日K线（腾讯API，替代akshare）"""
+        prefix = "sh" if code.startswith(('6', '5')) else "sz"
         for retry in range(3):
             try:
-                df = ak.stock_zh_a_hist(symbol=code, period="daily", adjust="qfq")
-                if df is not None and not df.empty:
-                    df = df.sort_values('日期')
-                    df = df.tail(days).copy()
-                    return df
+                r = requests.get(
+                    f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={prefix}{code},day,,,{days},qfq",
+                    headers={'User-Agent': 'Mozilla/5.0'},
+                    timeout=10
+                )
+                data = r.json()
+                kd = data.get('data', {}).get(f'{prefix}{code}', {})
+                klines = kd.get('qfqday') or kd.get('day')
+                if not klines:
+                    continue
+                
+                # 解析为DataFrame格式（兼容原有评分逻辑）
+                rows = []
+                for k in klines:
+                    parts = k if isinstance(k, list) else k.split('/')
+                    # parts: [日期, 开盘, 收盘, 最高, 最低, 成交量]
+                    rows.append({
+                        '日期': parts[0],
+                        '开盘': float(parts[1]),
+                        '收盘': float(parts[2]),
+                        '最高': float(parts[3]),
+                        '最低': float(parts[4]),
+                        '成交量': float(parts[5]),
+                    })
+                df = pd.DataFrame(rows)
+                df['日期'] = pd.to_datetime(df['日期'])
+                df = df.sort_values('日期')
+                df = df.tail(days).copy()
+                return df
             except Exception:
                 pytime.sleep(1)
                 continue
@@ -349,7 +374,7 @@ class TrendFollowingStrategy(BaseStrategy):
         closes = df['收盘'].values
         rsi = self._calc_rsi(closes)
         
-        if rsi >= 80:
+        if rsi >= 88:
             return 0, f"RSI={rsi:.0f} ❌ 严重超买"
         elif rsi >= cfg['rsi_max']:
             return 0, f"RSI={rsi:.0f} ❌ 过热（>{cfg['rsi_max']}）"
@@ -393,9 +418,12 @@ class TrendFollowingStrategy(BaseStrategy):
         # K线形态确认（收盘站稳+连续上涨）
         kline_confirm = False
         if len(closes) >= 5:
-            # 最近3天有2天收涨
+            # 条件A：最近3天有2天收涨
             up_days = sum(1 for i in range(-3, 0) if closes[i] > closes[i-1])
-            if up_days >= 2:
+            # 条件B：最近3天收盘价都站在5日线上（趋势稳定）
+            ma5_recent = pd.Series(closes).rolling(5).mean().values
+            above_ma5_3d = len(closes) >= 5 and all(closes[-i] > ma5_recent[-i] for i in range(1, 4))
+            if up_days >= 2 or above_ma5_3d:
                 kline_confirm = True
         
         # ATR（用于动态止损）
@@ -450,9 +478,14 @@ class TrendFollowingStrategy(BaseStrategy):
                 elif fund_trend_info['trend'] == 'neutral':
                     signal_bonus += 5
                 elif fund_trend_info['trend'] == 'weak':
-                    # 资金流出严重时降级信号
-                    if fund_trend_info['net_5d_wan'] < -5000:
-                        buy_signal = False
+                    # 资金流出时降分（取消绝对否决，强势股高换手率下适度流出是正常的）
+                    net = fund_trend_info.get('net_5d_wan', 0)
+                    if net < -50000:  # 超5亿流出，严重降分
+                        signal_bonus -= 10
+                    elif net < -10000:  # 1-5亿流出，中度降分
+                        signal_bonus -= 5
+                    else:  # 轻度流出
+                        signal_bonus -= 2
             except Exception:
                 pass
             

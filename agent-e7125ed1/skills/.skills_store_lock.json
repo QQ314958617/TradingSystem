@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "skills": {
+    "ai-meeting-notes": {
+      "name": "AI Meeting Notes w/ Action Items + To-Do List Tracker",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=ai-meeting-notes",
+      "source": "community",
+      "version": "1.0.3",
+      "installedAt": "2026-06-15T02:59:38Z"
+    },
+    "meeting-note": {
+      "name": "Meeting Note",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=meeting-note",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-15T02:59:39Z"
+    },
+    "meeting-minutes-organizer": {
+      "name": "会议纪要自动整理工具",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=meeting-minutes-organizer",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-15T02:59:41Z"
+    },
+    "meeting-notes-assistant": {
+      "name": "Meeting Notes Assistant",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=meeting-notes-assistant",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-15T02:59:42Z"
+    },
+    "dingtalk-minutes": {
+      "name": "DingTalk Minutes",
+      "zip_url": "https://api.skillhub.cn/api/v1/download?slug=dingtalk-minutes",
+      "source": "community",
+      "version": "1.0.0",
+      "installedAt": "2026-06-15T02:59:44Z"
+    }
+  }
+}

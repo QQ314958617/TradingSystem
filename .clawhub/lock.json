@@ -152,6 +152,50 @@
     "backtesting-trading-strategies": {
       "version": "2.0.0",
       "installedAt": 1779420248879
+    },
+    "ai-stock-analyst": {
+      "version": "1.0.0",
+      "installedAt": 1781255302187
+    },
+    "investlog-ai": {
+      "version": "1.0.2",
+      "installedAt": 1781255303444
+    },
+    "stock-research-engine": {
+      "version": "3.0.0",
+      "installedAt": 1781255304895
+    },
+    "industry-research-analyst": {
+      "version": "1.0.0",
+      "installedAt": 1781255306469
+    },
+    "valuation-analysis": {
+      "version": "1.0.0",
+      "installedAt": 1781255307913
+    },
+    "finance-research-report": {
+      "version": "1.0.0",
+      "installedAt": 1781255309196
+    },
+    "ai-meeting-notes": {
+      "version": "1.0.3",
+      "installedAt": 1781492378418
+    },
+    "meeting-note": {
+      "version": "1.0.0",
+      "installedAt": 1781492379927
+    },
+    "meeting-minutes-organizer": {
+      "version": "1.0.0",
+      "installedAt": 1781492381283
+    },
+    "meeting-notes-assistant": {
+      "version": "1.0.0",
+      "installedAt": 1781492382708
+    },
+    "dingtalk-minutes": {
+      "version": "1.0.0",
+      "installedAt": 1781492384128
     }
   }
 }

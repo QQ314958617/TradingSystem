@@ -5,7 +5,7 @@ import json
 import os
 import logging
 from datetime import datetime, date, timedelta, timezone
-from flask import Blueprint, jsonify, request, render_template, make_response
+from flask import Blueprint, jsonify, request, render_template, make_response, send_from_directory
 
 import akshare as ak
 import requests
@@ -17,6 +17,21 @@ from config import STAR_OFFICE_STATE_FILE
 logger = logging.getLogger(__name__)
 
 system_bp = Blueprint('system', __name__)
+
+
+# 文件下载目录配置
+_DOWNLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'downloads')
+os.makedirs(_DOWNLOAD_DIR, exist_ok=True)
+
+
+@system_bp.route('/download/<filename>')
+def download_file(filename):
+    """下载文件"""
+    # 安全校验，防止路径穿越
+    safe_path = os.path.normpath(filename)
+    if '..' in safe_path or safe_path.startswith('/'):
+        return jsonify({'error': 'invalid filename'}), 400
+    return send_from_directory(_DOWNLOAD_DIR, safe_path, as_attachment=True)
 
 
 @system_bp.route('/')
