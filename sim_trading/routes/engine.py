@@ -463,8 +463,9 @@ def market_scan():
 
         if in_buy_window and not result["actions"] and not positions_data:
             try:
-                from overnight_screener import screen_overnight_v3
-                candidates = screen_overnight_v3()
+                from strategies.overnight_strategy import OvernightStrategy
+                s = OvernightStrategy(strategy_id=1)
+                candidates = s.scan_stocks()
                 if candidates:
                     best = candidates[0]
                     result["signals"].append({

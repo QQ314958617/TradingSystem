@@ -171,84 +171,48 @@ class TrendFollowingStrategy(BaseStrategy):
         rs = avg_gain / avg_loss
         return 100 - (100 / (1 + rs))
     
-    def _em_api(self, url: str, params: dict) -> dict:
-        """东方财富API直连（带重试）"""
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        for retry in range(3):
-            try:
-                r = requests.get(url, params=params, headers=headers, timeout=15)
-                return r.json()
-            except Exception:
-                if retry < 2:
-                    pytime.sleep(3)
-                continue
-        return {}
-    
     def _get_hot_boards(self) -> list:
-        """获取热门板块TOP N（东方财富直连）"""
-        boards = []
-        try:
-            data = self._em_api(
-                'https://push2.eastmoney.com/api/qt/clist/get',
-                {'pn':'1','pz':str(self.config['hot_board_top_n']),'po':'1','np':'1',
-                 'ut':'bd1d9ddb04089700cf9c27f6f7426281',
-                 'fltt':'2','invt':'2','fid':'f3',
-                 'fs':'m:90+t:3',
-                 'fields':'f12,f14,f3'}
-            )
-            if data.get('data') and data['data'].get('diff'):
-                for s in data['data']['diff']:
-                    boards.append(s.get('f14', ''))
-        except Exception:
-            pass
-        return boards
+        """热门板块（腾讯不提供板块数据，返回空）"""
+        return []
     
     def _get_hot_stocks_from_pool(self) -> list:
-        """从全市场涨幅排名获取候选股票（东方财富直连）"""
+        """从全市场腾讯批量查询获取热门候选股票"""
         candidates = []
-        # 全市场涨幅排序，取前200只
-        try:
-            data = self._em_api(
-                'https://push2.eastmoney.com/api/qt/clist/get',
-                {'pn':'1','pz':'200','po':'1','np':'1',
-                 'ut':'bd1d9ddb04089700cf9c27f6f7426281',
-                 'fltt':'2','invt':'2','fid':'f3',
-                 'fs':'m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048',
-                 'fields':'f2,f3,f4,f12,f14,f8,f15,f20,f100'}
-            )
-            if data.get('data') and data['data'].get('diff'):
-                for s in data['data']['diff']:
-                    code = str(s.get('f12', '')).strip().zfill(6)
-                    pct = float(s.get('f3', 0) if s.get('f3') is not None else 0)
-                    name = str(s.get('f14', ''))
-                    turnover = float(s.get('f8', 0) if s.get('f8') else 0)
-                    # 过滤：涨幅2.5%-18%（↑原10%，牛市龙头常涨12-18%不等涨停）+ 换手率2%-25%
-                    if 2.5 <= pct <= 18 and 2 <= turnover <= 25:
-                        candidates.append({'code': code, 'name': name, 'pct': pct, 'turnover': turnover})
-        except Exception:
-            pass
         
-        # 不够候选时放宽换手率限制
-        if len(candidates) < 5:
+        # 复用腾讯批量扫描逻辑
+        codes = []
+        for prefix in ['sh600', 'sh601', 'sh603', 'sh605']:
+            codes.extend([f'{prefix}{i:0>3d}' for i in range(1000)])
+        codes.extend([f'sh688{i:0>3d}' for i in range(600)])
+        for prefix in ['sz000', 'sz001']:
+            codes.extend([f'{prefix}{i:0>3d}' for i in range(1000)])
+        for prefix in ['sz002', 'sz003']:
+            codes.extend([f'{prefix}{i:0>3d}' for i in range(1000)])
+        for prefix in ['sz300', 'sz301']:
+            codes.extend([f'{prefix}{i:0>3d}' for i in range(1000)])
+        
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        for start in range(0, len(codes), 500):
+            batch = codes[start:start+500]
             try:
-                data = self._em_api(
-                    'https://push2.eastmoney.com/api/qt/clist/get',
-                    {'pn':'1','pz':'100','po':'1','np':'1',
-                     'ut':'bd1d9ddb04089700cf9c27f6f7426281',
-                     'fltt':'2','invt':'2','fid':'f3',
-                     'fs':'m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048',
-                     'fields':'f2,f3,f4,f12,f14,f8,f15,f20,f100'}
-                )
-                if data.get('data') and data['data'].get('diff'):
-                    for s in data['data']['diff']:
-                        code = str(s.get('f12', '')).strip().zfill(6)
-                        pct = float(s.get('f3', 0) if s.get('f3') is not None else 0)
-                        name = str(s.get('f14', ''))
-                        if 2.5 <= pct <= 18:
-                            if code not in [c['code'] for c in candidates]:
-                                candidates.append({'code': code, 'name': name, 'pct': pct})
-            except Exception:
-                pass
+                url = f'https://qt.gtimg.cn/q={",".join(batch)}'
+                r = requests.get(url, headers=headers, timeout=20)
+                for item in r.text.strip().split(';'):
+                    if '="' not in item: continue
+                    try:
+                        fields = item.split('="')[1].strip('"').split('~')
+                        if len(fields) < 50: continue
+                        name = fields[1]; code = fields[2]
+                        pct = float(fields[32]) if fields[32] not in ('', '-') else 0
+                        turnover = float(fields[38]) if fields[38] not in ('', '-') else 0
+                        price = float(fields[3]) if fields[3] not in ('', '-') else 0
+                        if price == 0 or code == fields[1]: continue
+                        if 'ST' in name or '*ST' in name: continue
+                        # 候选池：涨幅<18%（含涨停），换手率不限
+                        if 0 <= pct <= 18:
+                            candidates.append({'code': code, 'name': name, 'pct': pct, 'turnover': turnover})
+                    except: continue
+            except: continue
         
         return candidates
     
