@@ -171,55 +171,84 @@ class TrendFollowingStrategy(BaseStrategy):
         rs = avg_gain / avg_loss
         return 100 - (100 / (1 + rs))
     
+    def _em_api(self, url: str, params: dict) -> dict:
+        """东方财富API直连（带重试）"""
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        for retry in range(3):
+            try:
+                r = requests.get(url, params=params, headers=headers, timeout=15)
+                return r.json()
+            except Exception:
+                if retry < 2:
+                    pytime.sleep(3)
+                continue
+        return {}
+    
     def _get_hot_boards(self) -> list:
-        """获取热门板块TOP N"""
+        """获取热门板块TOP N（东方财富直连）"""
         boards = []
         try:
-            df = ak.stock_board_industry_summary_ths()
-            if df is not None and not df.empty:
-                # 按涨幅排序取前N
-                for col in df.columns:
-                    if '涨跌幅' in col or '涨幅' in col:
-                        df = df.sort_values(col, ascending=False)
-                        break
-                top_n = min(self.config['hot_board_top_n'], len(df))
-                for i in range(top_n):
-                    row = df.iloc[i]
-                    name = str(row.iloc[0])
-                    boards.append(name)
+            data = self._em_api(
+                'https://push2.eastmoney.com/api/qt/clist/get',
+                {'pn':'1','pz':str(self.config['hot_board_top_n']),'po':'1','np':'1',
+                 'ut':'bd1d9ddb04089700cf9c27f6f7426281',
+                 'fltt':'2','invt':'2','fid':'f3',
+                 'fs':'m:90+t:3',
+                 'fields':'f12,f14,f3'}
+            )
+            if data.get('data') and data['data'].get('diff'):
+                for s in data['data']['diff']:
+                    boards.append(s.get('f14', ''))
         except Exception:
             pass
         return boards
     
     def _get_hot_stocks_from_pool(self) -> list:
-        """从强势股池获取候选股票"""
+        """从全市场涨幅排名获取候选股票（东方财富直连）"""
         candidates = []
+        # 全市场涨幅排序，取前200只
         try:
-            today_str = datetime.now().strftime('%Y-%m-%d')
-            df = ak.stock_zt_pool_strong_em(date=today_str)
-            if df is not None and not df.empty:
-                for _, row in df.iterrows():
-                    code = str(row.get('代码', '')).strip()
-                    pct = float(row.get('涨幅', 0) if row.get('涨幅') else 0)
-                    name = str(row.get('名称', ''))
-                    # 过滤：涨幅3%-10%的强势股（排除涨停和太弱的）
-                    if 3 <= pct <= 10:
-                        candidates.append({'code': code, 'name': name, 'pct': pct})
+            data = self._em_api(
+                'https://push2.eastmoney.com/api/qt/clist/get',
+                {'pn':'1','pz':'200','po':'1','np':'1',
+                 'ut':'bd1d9ddb04089700cf9c27f6f7426281',
+                 'fltt':'2','invt':'2','fid':'f3',
+                 'fs':'m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048',
+                 'fields':'f2,f3,f4,f12,f14,f8,f15,f20,f100'}
+            )
+            if data.get('data') and data['data'].get('diff'):
+                for s in data['data']['diff']:
+                    code = str(s.get('f12', '')).strip().zfill(6)
+                    pct = float(s.get('f3', 0) if s.get('f3') is not None else 0)
+                    name = str(s.get('f14', ''))
+                    turnover = float(s.get('f8', 0) if s.get('f8') else 0)
+                    # 过滤：涨幅3%-10%（排除涨停和太弱的）+ 换手率3%-20%
+                    if 2.5 <= pct <= 10 and 3 <= turnover <= 25:
+                        candidates.append({'code': code, 'name': name, 'pct': pct, 'turnover': turnover})
         except Exception:
             pass
         
-        # 补充：昨日涨停今日回调的（涨停后企稳模式）
-        try:
-            yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-            # 周末跳过
-            df_pre = ak.stock_zt_pool_previous_em(date=yesterday)
-            if df_pre is not None and not df_pre.empty:
-                for _, row in df_pre.iterrows():
-                    code = str(row.get('代码', '')).strip()
-                    if code not in [c['code'] for c in candidates]:
-                        candidates.append({'code': code, 'name': str(row.get('名称', '')), 'pct': 0, 'pre_zt': True})
-        except Exception:
-            pass
+        # 不够候选时放宽换手率限制
+        if len(candidates) < 5:
+            try:
+                data = self._em_api(
+                    'https://push2.eastmoney.com/api/qt/clist/get',
+                    {'pn':'1','pz':'100','po':'1','np':'1',
+                     'ut':'bd1d9ddb04089700cf9c27f6f7426281',
+                     'fltt':'2','invt':'2','fid':'f3',
+                     'fs':'m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048',
+                     'fields':'f2,f3,f4,f12,f14,f8,f15,f20,f100'}
+                )
+                if data.get('data') and data['data'].get('diff'):
+                    for s in data['data']['diff']:
+                        code = str(s.get('f12', '')).strip().zfill(6)
+                        pct = float(s.get('f3', 0) if s.get('f3') is not None else 0)
+                        name = str(s.get('f14', ''))
+                        if 2.5 <= pct <= 10:
+                            if code not in [c['code'] for c in candidates]:
+                                candidates.append({'code': code, 'name': name, 'pct': pct})
+            except Exception:
+                pass
         
         return candidates
     
