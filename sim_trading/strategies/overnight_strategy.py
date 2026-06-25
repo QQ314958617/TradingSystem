@@ -6,6 +6,9 @@
 
 v3.1 数据源迁移: 东方财富全线断开 → 纯腾讯API
 v3.2 并发优化: _scan_tencent_batch 多线程并发, 50s→~15s
+v3.3 热点因子 + 放宽止损: 
+  - 自动计算全市场热力排名，选热点板块的强势股
+  - 止损从-2%放宽到-3.5%，减少被震飞
 """
 import sys
 import os
@@ -17,6 +20,7 @@ import numpy as np
 import requests
 import time as pytime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import math
 
 
 class OvernightStrategy(BaseStrategy):
@@ -34,11 +38,13 @@ class OvernightStrategy(BaseStrategy):
             'turnover_min': 2.0,      'turnover_max': 15.0,
             'volume_ratio_min': 1.2,
             'market_cap_min': 30,     'market_cap_max': 500,
-            'stop_loss': -2.0,
+            'stop_loss': -3.5,
             'take_profit_min': 4.0,   'take_profit_max': 10.0,
             'max_positions': 3,       'position_size': 30000,
             'buy_time_start': '14:50', 'buy_time_end': '14:55',
             'sell_time_start': '09:30', 'sell_time_end': '10:30',
+            'hot_rank_top_n': 300,    # 热力值前N名算热门
+            'hot_factor_weight': 20,  # 热门加分
             ** (config or {})
         }
     
@@ -154,13 +160,67 @@ class OvernightStrategy(BaseStrategy):
                 all_stocks.extend(f.result())
         return all_stocks
     
+    def _calc_heat_scores(self, all_stocks: list) -> dict:
+        """从全市场扫描结果中自动计算每只股票的热力值
+        
+        无需外部概念API。思路：
+        1. 全市场按 (量比归一化 + 换手率归一化 + 涨幅归一化) 排名
+        2. 总排名前N（默认300）的标记为"热门股"，额外加分
+        3. 这相当于自动抓到了当前热点板块里的活跃股
+        
+        返回: { code: heat_rank }  排名1=最热
+        """
+        # 过滤：排除无效、ST、北交所
+        valid = []
+        for s in all_stocks:
+            if s['price'] <= 0: continue
+            if s['turnover'] <= 0: continue
+            name = s.get('name', '')
+            code = s.get('code', '')
+            if 'ST' in name or '*ST' in name: continue
+            if code.startswith('8') or code.startswith('4'): continue
+            valid.append(s)
+        
+        if len(valid) < 200:
+            return {}
+        
+        # 计算百分位排名，避免极端值干扰
+        vol_ratios = [s['volume_ratio'] for s in valid]
+        turnovers = [s['turnover'] for s in valid]
+        pcts = [abs(s['change_pct']) for s in valid]  # 用涨幅，但涨跌都算活跃
+        
+        def percentile_rank(values):
+            """返回每个值在全体中的百分位排名 0-100"""
+            sorted_vals = sorted(values)
+            n = len(sorted_vals)
+            rank_map = {}
+            for i, v in enumerate(sorted_vals):
+                rank_map.setdefault(v, []).append(i / n * 100)
+            return [max(rank_map[v]) for v in values]
+        
+        vol_ranks = percentile_rank(vol_ratios)
+        to_ranks = percentile_rank(turnovers)
+        pct_ranks = percentile_rank(pcts)
+        
+        # 综合热力分 = 加权百分位
+        heat_scores = {}
+        for i, s in enumerate(valid):
+            code = s['code']
+            # 量比权重0.4 + 换手率权重0.3 + 涨幅权重0.3
+            heat = vol_ranks[i] * 0.4 + to_ranks[i] * 0.3 + pct_ranks[i] * 0.3
+            heat_scores[code] = heat
+        
+        return heat_scores
+    
     def scan_stocks(self) -> list:
         """尾盘选股扫描（腾讯全量扫描+并发）
         
         流程：
         1. 生成全A股代码 → 腾讯批量扫描（并发）
-        2. 涨幅/换手率/量比/ST初步过滤
-        3. 腾讯K线计算RSI → 精细过滤评分
+        2. 计算全市场热力值（量比+换手率+涨幅百分位排名）
+        3. 涨幅/换手率/量比/ST初步过滤
+        4. 腾讯K线计算RSI → 精细过滤评分
+        5. 热门股加分
         """
         cfg = self.config
         index = self._get_market_index()
@@ -169,6 +229,16 @@ class OvernightStrategy(BaseStrategy):
         all_stocks = self._scan_tencent_batch(self._get_all_codes())
         if not all_stocks:
             return []
+        
+        # 计算热力值（基于全市场数据）
+        heat_scores = self._calc_heat_scores(all_stocks)
+        hot_threshold = cfg['hot_rank_top_n']
+        # 找出排名前N的热门阈值
+        if heat_scores:
+            sorted_heats = sorted(heat_scores.values(), reverse=True)
+            hot_cutoff = sorted_heats[min(hot_threshold - 1, len(sorted_heats) - 1)]
+        else:
+            hot_cutoff = 0
         
         # 初步过滤
         candidates = []
@@ -181,6 +251,8 @@ class OvernightStrategy(BaseStrategy):
             if not (cfg['rise_min'] <= pct <= cfg['rise_max']): continue
             if not (cfg['turnover_min'] <= s['turnover'] <= cfg['turnover_max']): continue
             if s['volume_ratio'] < cfg['volume_ratio_min']: continue
+            # 附带热力值
+            s['heat_score'] = heat_scores.get(code, 0)
             candidates.append(s)
         
         # RSI过滤+评分（并发K线获取）
@@ -196,19 +268,40 @@ class OvernightStrategy(BaseStrategy):
                 if not (cfg['rsi_min'] <= rsi <= cfg['rsi_max']):
                     return None
                 
-                score = (s['change_pct'] - cfg['rise_min']) * 2
+                # === 新版评分系统 ===
+                score = 0.0
+                
+                # 1. 涨幅得分（越靠近涨幅上限越好）
+                score += (s['change_pct'] - cfg['rise_min']) * 2
+                
+                # 2. 换手率得分（活跃）
                 score += min(s['turnover'], 10) * 0.5
+                
+                # 3. RSI得分（RSI低说明还有上涨空间）
                 score += (80 - rsi) * 0.5
+                
+                # 4. 量比得分（放量确认）
                 score += min(s['volume_ratio'] / cfg['volume_ratio_min'], 3) * 5
+                
+                # 5. 强于大盘加分
                 if index.get('change_pct', 0) and s['change_pct'] > index['change_pct']:
                     score += 10
+                
+                # 6. ⭐ 热点因子：全市场热力排名加分（核心改动！）
+                is_hot = s['heat_score'] >= hot_cutoff
+                heat_bonus = cfg['hot_factor_weight'] if is_hot else 0
+                score += heat_bonus
+                
+                is_hot_label = "🔥热门" if is_hot else ""
                 
                 return {
                     'code': s['code'], 'name': s['name'],
                     'price': s['price'], 'change_pct': s['change_pct'],
                     'turnover': s['turnover'], 'market_cap': round(s['market_cap'], 1),
                     'rsi': round(rsi, 1), 'volume_ratio': round(s['volume_ratio'], 2),
+                    'heat_score': round(s['heat_score'], 1),
                     'score': round(score, 1),
+                    'is_hot': is_hot_label,
                 }
             except Exception:
                 return None
@@ -230,7 +323,7 @@ class OvernightStrategy(BaseStrategy):
                 f"成交量>{cfg['volume_ratio_min']}x、"
                 f"换手率{cfg['turnover_min']}%-{cfg['turnover_max']}%、"
                 f"流通市值{cfg['market_cap_min']}-{cfg['market_cap_max']}亿、"
-                f"RSI < {cfg['rsi_max']}、站上分时均价线、强于大盘")
+                f"RSI < {cfg['rsi_max']}、全市场热力前{cfg['hot_rank_top_n']}（+{cfg['hot_factor_weight']}分）、强于大盘")
 
 
 StrategyRegistry.register(OvernightStrategy)
