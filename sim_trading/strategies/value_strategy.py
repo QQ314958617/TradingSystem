@@ -381,6 +381,85 @@ class ValueInvestingStrategy(BaseStrategy):
             'action': '买入' if buy_signal else '不符合条件：' + '；'.join(failures[:3]),
         }
     
+    # ─── 每日持仓监控（v3.1新增）───
+    
+    def check_positions(self, positions: list, quotes: dict) -> list:
+        """每日主动检查所有持仓的止损/止盈/基本面
+        
+        Args:
+            positions: 持仓列表，每个元素含 stock_code, avg_cost, shares, buy_date
+            quotes: { code: { price, name } } 实时行情
+        
+        Returns:
+            [(code, shares, reason)] 需要卖出的指令列表
+        """
+        cfg = self.config
+        now = self.get_bj_time()
+        sell_orders = []
+        
+        for pos in positions:
+            code = pos['stock_code']
+            quote = quotes.get(code, {})
+            current_price = quote.get('price', 0)
+            if current_price <= 0:
+                continue
+            
+            cost_price = pos['avg_cost']
+            shares = pos['shares']
+            loss_pct = (current_price - cost_price) / cost_price * 100
+            
+            # 计算持仓天数
+            hold_days = 0
+            buy_date_str = pos.get('buy_date', '')
+            if buy_date_str and now:
+                try:
+                    buy_dt = datetime.strptime(buy_date_str.split()[0], '%Y-%m-%d')
+                    hold_days = (now - buy_dt.replace(tzinfo=None)).days
+                    if hold_days < 0:
+                        hold_days = 0
+                except Exception:
+                    pass
+            
+            # 1️⃣ 止损检查（无条件全卖）
+            if loss_pct <= cfg['stop_loss']:
+                sell_orders.append({
+                    'code': code,
+                    'shares': shares,
+                    'reason': f'止损触发：亏损{loss_pct:.1f}%（≤{cfg["stop_loss"]}%），全卖'
+                })
+                continue
+            
+            # 2️⃣ 超时卖出（全卖）
+            if hold_days >= cfg['max_hold_days']:
+                sell_orders.append({
+                    'code': code,
+                    'shares': shares,
+                    'reason': f'超时卖出：已持有{hold_days}天（上限{cfg["max_hold_days"]}天）'
+                })
+                continue
+            
+            # 3️⃣ 分批止盈
+            gain_pct = -loss_pct  # 转正
+            gain_pct = (current_price - cost_price) / cost_price * 100
+            
+            if gain_pct >= cfg['clear_trigger_gain']:
+                sell_orders.append({
+                    'code': code,
+                    'shares': shares,
+                    'reason': f'涨幅{gain_pct:.1f}% ≥ {cfg["clear_trigger_gain"]}%，触发清仓'
+                })
+            elif gain_pct >= cfg['reduce_trigger_gain']:
+                sell_shares = (shares // 200) * 100
+                if sell_shares < 100:
+                    sell_shares = shares
+                sell_orders.append({
+                    'code': code,
+                    'shares': sell_shares,
+                    'reason': f'涨幅{gain_pct:.1f}% ≥ {cfg["reduce_trigger_gain"]}%，减仓一半'
+                })
+        
+        return sell_orders
+    
     # ─── 退出决策（v3.0 分批减仓）───
     
     def should_sell(self, code: str, cost_price: float, current_price: float,
