@@ -42,12 +42,21 @@ def main():
     if not isinstance(positions, dict):
         positions = {}
     
-    has_position = bool(positions)
     print(f"策略1当前持仓: {len(positions)} 只", flush=True)
-    if has_position:
-        for code, pos in positions.items():
-            print(f"  {code} {pos.get('stock_name','')} {pos.get('shares',0)}股 @{pos.get('avg_cost',0)}", flush=True)
-        print("有持仓，跳过买入", flush=True)
+    for code, pos in positions.items():
+        print(f"  {code} {pos.get('stock_name','')} {pos.get('shares',0)}股 @{pos.get('avg_cost',0)}", flush=True)
+    
+    # 计算已用资金
+    used_capital = sum(p.get('shares',0) * p.get('avg_cost',0) for p in positions.values())
+    remaining_capital = 150000 - used_capital
+    print(f"策略1已用: ¥{used_capital:.0f}, 剩余额度: ¥{remaining_capital:.0f}, 上限: ¥150,000", flush=True)
+    
+    if remaining_capital <= 0:
+        print("策略1额度已用完，跳过买入", flush=True)
+        return 0
+    
+    if len(positions) >= 3:
+        print("策略1持仓已满3只，跳过买入", flush=True)
         return 0
     
     # 读取扫描结果
@@ -63,12 +72,13 @@ def main():
         print("扫描结果为空，跳过买入", flush=True)
         return 0
     
-    # 前3名买入（一夜持股法最多3只）
-    to_buy = candidates[:3]
-    print(f"\n准备买入 {len(to_buy)} 只:", flush=True)
+    # 前3名买入（一夜持股法最多3只），但不超过剩余额度
+    max_new = 3 - len(positions)
+    to_buy = candidates[:max_new]
+    print(f"\n准备买入 {len(to_buy)} 只 (还可建仓{max_new}只):", flush=True)
     
-    # 资金：策略1上限¥150k，每只约¥50k
-    per_stock_max = 50000
+    # 资金：剩余额度平分
+    per_stock_max = min(50000, remaining_capital / max(1, max_new))
     
     for r in to_buy:
         code = r["code"]
