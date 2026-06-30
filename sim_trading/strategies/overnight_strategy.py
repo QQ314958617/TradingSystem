@@ -40,7 +40,7 @@ class OvernightStrategy(BaseStrategy):
             'market_cap_min': 30,     'market_cap_max': 500,
             'stop_loss': -3.5,
             'take_profit_min': 4.0,   'take_profit_max': 10.0,
-            'max_positions': 3,       'position_size': 30000,
+            'max_positions': 3,       'position_size': 50000,
             'buy_time_start': '14:50', 'buy_time_end': '14:55',
             'sell_time_start': '09:30', 'sell_time_end': '10:30',
             'hot_rank_top_n': 300,    # 热力值前N名算热门

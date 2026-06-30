@@ -43,6 +43,8 @@ def main():
         codes = ",".join(positions.keys())
         quotes = api_get(f"/quotes/batch?codes={codes}")
         if "error" not in quotes:
+            from datetime import datetime
+            now = datetime.now()
             for q in quotes:
                 code = q["code"]
                 name = q.get("name", code)
@@ -53,10 +55,37 @@ def main():
                 cost = pos["avg_cost"]
                 shares = pos["shares"]
                 profit_pct = (price - cost) / cost * 100
-                print(f"  {code} {name}: 成本{cost} 现价{price} 盈亏{profit_pct:+.2f}% {shares}股", flush=True)
+                
+                # 计算持有天数
+                buy_date_str = pos.get("buy_date", "") or ""
+                hold_days = 0
+                if buy_date_str:
+                    try:
+                        buy_dt = datetime.strptime(buy_date_str[:10], "%Y-%m-%d")
+                        hold_days = (now - buy_dt).days
+                    except:
+                        pass
+                
+                print(f"  {code} {name}: 成本{cost} 现价{price} 盈亏{profit_pct:+.2f}% 持有{hold_days}天 {shares}股", flush=True)
+                
+                # 最大持有天数强制平仓
+                if hold_days >= 14:
+                    print(f"  -> 持有{hold_days}天达到14天上限，强制平仓!", flush=True)
+                    result = api_post("/trade", {
+                        "action": "sell",
+                        "stock_code": code,
+                        "shares": shares,
+                        "price": price,
+                        "reason": f"趋势跟踪超时卖出(持{hold_days}天)",
+                        "strategy_id": 3
+                    })
+                    if "error" in result:
+                        print(f"  -> 卖出失败: {result['error']}", flush=True)
+                    else:
+                        print(f"  -> 强制平仓成功!", flush=True)
+                    continue
                 
                 # 止损 -6%
-                if profit_pct <= -6:
                     print(f"  -> 趋势跟踪止损! (亏{profit_pct:.1f}%)", flush=True)
                     result = api_post("/trade", {
                         "action": "sell",
