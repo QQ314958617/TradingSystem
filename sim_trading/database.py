@@ -424,10 +424,12 @@ def get_equity_curve(days=30, strategy_id=None):
         else:
             c.execute('''
                 SELECT * FROM equity_curve
-                ORDER BY date ASC
+                ORDER BY id DESC
                 LIMIT ?
             ''', (days,))
-        return [dict(row) for row in c.fetchall()]
+        rows = [dict(row) for row in c.fetchall()]
+        rows.reverse()
+        return rows
 
 # ========== 统计分析 ==========
 
