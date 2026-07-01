@@ -181,7 +181,7 @@ def init_database():
 
 # ========== 账户操作 ==========
 
-INITIAL_CAPITAL = 500000.0  # 总账户初始资金(一夜持股¥10万 + 价值投资¥30万 + 趋势跟踪¥10万)
+INITIAL_CAPITAL = 100000.0  # 总账户初始资金
 
 def get_account():
     """获取账户信息"""
