@@ -48,6 +48,14 @@ ETF_JJCODES = {
     "511090": "511090.XSHG",
 }
 
+# ETF腾讯代码前缀映射
+ETF_TENCENT_PREFIX = {
+    "513100": "sh", "159525": "sz", "513130": "sh", "159915": "sz",
+    "159628": "sz", "588120": "sh", "513520": "sh", "513030": "sh",
+    "518880": "sh", "161226": "sz", "159985": "sz", "501018": "sh",
+    "159652": "sz", "511090": "sh",
+}
+
 # ETF名称映射
 ETF_NAMES = {
     "513100": "纳指ETF",
@@ -79,8 +87,11 @@ def get_etf_kline(etf_code: str, days: int) -> Optional[Dict]:
     """获取ETF日K线数据（通过交易系统行情API或腾讯接口）"""
     import requests
     try:
+        prefix = ETF_TENCENT_PREFIX.get(etf_code, "sh")
+        tencent_code = prefix + etf_code
+        
         # 腾讯行情接口
-        url = f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={etf_code},day,,,{days},qfq"
+        url = f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={tencent_code},day,,,{days},qfq"
         headers = {'User-Agent': 'Mozilla/5.0'}
         r = requests.get(url, headers=headers, timeout=5)
         data = r.json()
@@ -88,13 +99,13 @@ def get_etf_kline(etf_code: str, days: int) -> Optional[Dict]:
         # 解析腾讯返回格式
         if data.get('code') == 0:
             kdata = data.get('data', {})
-            if etf_code in kdata:
-                days_data = kdata[etf_code].get('day', kdata[etf_code].get('qfqday', []))
-                if days_data and len(days_data) >= days:
-                    closes = [float(d[2]) for d in days_data]
-                    highs = [float(d[3]) for d in days_data]
-                    lows = [float(d[4]) for d in days_data]
-                    return {'close': closes, 'high': highs, 'low': lows, 'dates': [d[0] for d in days_data]}
+            if tencent_code in kdata:
+                days_data = kdata[tencent_code].get('day', kdata[tencent_code].get('qfqday', []))
+                if days_data and len(days_data) >= min(days, 10):
+                    closes = [float(d[2]) for d in days_data[-days:]]
+                    highs = [float(d[3]) for d in days_data[-days:]]
+                    lows = [float(d[4]) for d in days_data[-days:]]
+                    return {'close': closes, 'high': highs, 'low': lows, 'dates': [d[0] for d in days_data[-days:]]}
         
         # 备用：通过本地行情API
         resp = requests.get(f"http://localhost/api/quote/{etf_code}", timeout=5)
