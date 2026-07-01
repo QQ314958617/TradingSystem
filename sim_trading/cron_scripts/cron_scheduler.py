@@ -12,41 +12,30 @@ from datetime import datetime, timezone
 
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# 任务列表: (名字, 脚本名, cron表达式模拟)
+# ============================================================
+# v2.0 三策略调度（2026-07-01）
+# ETF轮动：每日09:35扫描+调仓
+# 小市值：每日10:00止损 + 每周二10:30调仓
+# 白马：每日14:00/14:30/14:50止损 + 每周一09:35调仓
+# 复盘：每日15:30
+# ============================================================
 TASKS = {
-    "overnight_sell": {
-        "script": "run_overnight_sell.py",
-        "check_minutes": [list(range(9*60, 10*60+30, 5))]  # 09:00-10:30 每5分钟
+    "etf_rotation": {
+        "script": "run_etf_rotation.py",
+        "check_minutes": [9*60 + 35],  # 09:35
     },
-    "value_stop_10": {
-        "script": "run_value_stop.py",
-        "check_minutes": [10*60]  # 10:00
+    "small_cap_stop": {
+        "script": "run_small_cap.py",
+        "check_minutes": [10*60, 14*60, 14*60 + 30],  # 10:00, 14:00, 14:30
     },
-    "trend_scan": {
-        "script": "run_trend_scan.py",
-        "check_minutes": [10*60]  # 10:00
-    },
-    "value_stop_14": {
-        "script": "run_value_stop.py",
-        "check_minutes": [14*60]  # 14:00
-    },
-    "overnight_scan": {
-        "script": "run_overnight_scan.py",
-        "check_minutes": [14*60 + 50]  # 14:50
-    },
-    "overnight_buy": {
-        "script": "run_overnight_buy.py",
-        "check_minutes": [14*60 + 55]  # 14:55
+    "white_horse_stop": {
+        "script": "run_white_horse.py",
+        "check_minutes": [14*60, 14*60 + 30, 14*60 + 50],  # 14:00, 14:30, 14:50
     },
     "daily_review": {
         "script": "run_daily_review.py",
-        "check_minutes": [15*60 + 30]  # 15:30
+        "check_minutes": [15*60 + 30],  # 15:30
     },
-    "value_scan_mon": {
-        "script": "run_value_scan.py",
-        "check_minutes": [9*60 + 30],  # 周一09:30
-        "weekday_only": [0]
-    }
 }
 
 last_run = {}

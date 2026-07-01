@@ -42,8 +42,8 @@ def index():
 
 @system_bp.route('/api/dashboard')
 def get_dashboard():
-    """一次请求拿全部面板数据"""
-    # 自动补全缺失的每日净值记录
+    """全新 v2.0 面板 — 一次请求拿全部三策略数据"""
+    # 净值补全
     try:
         from zoneinfo import ZoneInfo
         bj = ZoneInfo("Asia/Shanghai")
@@ -51,8 +51,8 @@ def get_dashboard():
         existing = db.get_equity_curve(days=365)
         existing_dates = {r['date'] for r in existing}
         account = db.get_account()
-        total_val = account.get('total_value', 50000)
-        cash_val = account.get('cash', 50000)
+        total_val = account.get('total_value', 100000)
+        cash_val = account.get('cash', 100000)
         pos_val = total_val - cash_val
 
         if existing:
@@ -100,16 +100,16 @@ def get_dashboard():
             'name': '上证指数', 'code': '000001',
             'price': current_price,
             'change_pct': float(fields[32]) if len(fields) > 32 and fields[32] != '-' else 0,
+            'change': float(fields[31]) if len(fields) > 31 and fields[31] != '-' else 0,
             'ma5': ma5, 'ma10': ma10,
             'above_ma5': bool(current_price > ma5) if ma5 > 0 else False,
             'above_ma10': bool(current_price > ma10) if ma10 > 0 else False,
         }
     except Exception as e:
         logger.warning(f"获取大盘指数失败: {e}")
-        index_data = {'name': '上证指数', 'code': '000001', 'price': 0, 'change_pct': 0, 'ma5': 0, 'ma10': 0}
+        index_data = {'name': '上证指数', 'code': '000001', 'price': 0, 'change_pct': 0, 'change': 0, 'ma5': 0, 'ma10': 0}
 
-    # 持仓详情（带实时价格）
-    pos_detail = {}
+    # ========== 持仓详情（按策略分组）==========
     codes = [p['stock_code'] for p in positions]
     quotes = {}
     if codes:
@@ -117,41 +117,95 @@ def get_dashboard():
             quotes = get_tencent_quote(codes)
         except Exception as e:
             logger.warning(f"获取持仓行情失败: {e}")
+    
+    pos_detail = {}
+    pos_by_strategy = {'etf': [], 'small_cap': [], 'white_horse': []}
+    strategy_map = {1: 'etf', 2: 'small_cap', 3: 'white_horse'}
+    
     for pos in positions:
         code = pos['stock_code']
         q = quotes.get(code, {})
         cp = q.get('price', pos['avg_cost'])
-        pos_detail[code] = {
+        sid = pos.get('strategy_id', 0)
+        skey = strategy_map.get(sid, 'unknown')
+        item = {
             'stock_name': pos.get('stock_name') or q.get('name', ''),
             'shares': pos['shares'], 'avg_cost': pos['avg_cost'],
             'current_price': cp, 'change_pct': q.get('change_pct', 0),
             'market_value': cp * pos['shares'],
             'profit': (cp - pos['avg_cost']) * pos['shares'],
             'profit_pct': ((cp - pos['avg_cost']) / pos['avg_cost'] * 100) if pos['avg_cost'] else 0,
-            'strategy_id': pos.get('strategy_id'),
+            'strategy_id': sid,
         }
+        pos_detail[code] = item
+        if skey in pos_by_strategy:
+            pos_by_strategy[skey].append(item)
 
-    # 多策略信息
+    # ========== 三策略明细 ==========
     strategies = db.get_strategies()
-    strategy_stats = {}
+    strategy_detail = {}
+    strategy_allocation = {'etf': 0.4, 'small_cap': 0.35, 'white_horse': 0.25}
+    
+    INITIAL_CAPITAL = 100000.0
+    
     for s in strategies:
         sid = s['id']
+        skey = strategy_map.get(sid, '')
+        if not skey:
+            continue
         s_stats = db.get_trade_stats(strategy_id=sid)
         s_positions = db.get_positions(strategy_id=sid)
-        strategy_stats[str(sid)] = {
+        
+        # 计算该策略已用资金
+        used = sum(p['shares'] * p['avg_cost'] for p in s_positions)
+        allocated = INITIAL_CAPITAL * strategy_allocation.get(skey, 0)
+        remaining = allocated - used
+        
+        # 策略当前市值
+        mv = sum(p['shares'] * quotes.get(p['stock_code'], {}).get('price', p['avg_cost']) for p in s_positions)
+        profit = mv - used
+        profit_pct = (profit / used * 100) if used > 0 else 0
+        
+        strategy_detail[skey] = {
+            'id': sid,
             'name': s['name'],
             'type': s['type'],
-            'capital': s['capital'],
-            'is_active': s['is_active'],
-            'stats': s_stats,
+            'capital_allocated': round(allocated, 2),
+            'capital_used': round(used, 2),
+            'capital_remaining': round(max(0, remaining), 2),
+            'market_value': round(mv, 2),
+            'profit': round(profit, 2),
+            'profit_pct': round(profit_pct, 2),
             'position_count': len(s_positions),
+            'stats': s_stats,
+            'is_active': s['is_active'],
         }
 
+    # ========== 三策略总览（净值曲线按策略分）==========
+    strategy_equity = {}
+    for sid, skey in strategy_map.items():
+        try:
+            eq = db.get_equity_curve(strategy_id=sid, days=60)
+            strategy_equity[skey] = eq
+        except Exception:
+            strategy_equity[skey] = []
+
     return jsonify({
-        'account': account, 'positions': pos_detail,
-        'trades': trades, 'reviews': reviews,
-        'stats': stats, 'equity': equity, 'index': index_data,
-        'strategies': strategy_stats,
+        'account': account,
+        'positions': pos_detail,
+        'positions_by_strategy': pos_by_strategy,
+        'trades': trades,
+        'reviews': reviews,
+        'stats': stats,
+        'equity': equity,
+        'index': index_data,
+        'strategies': strategy_detail,
+        'allocation': {
+            'total_capital': INITIAL_CAPITAL,
+            'etf': round(INITIAL_CAPITAL * 0.4, 2),
+            'small_cap': round(INITIAL_CAPITAL * 0.35, 2),
+            'white_horse': round(INITIAL_CAPITAL * 0.25, 2),
+        },
     })
 
 

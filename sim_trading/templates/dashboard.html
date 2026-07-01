@@ -3,14 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>🥚 蛋蛋交易系统</title>
+<title>🥚 蛋蛋交易系统 v2.0</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160/build/three.min.js"></script>
 <style>
 :root {
   --bg-deep: #07070d;
@@ -24,7 +19,6 @@
   --text-muted: #555570;
   --accent: #7c5cfc;
   --accent-light: #a78bfa;
-  --accent-dim: rgba(124,92,252,0.12);
   --up: #34d399;
   --up-bg: rgba(52,211,153,0.06);
   --up-border: rgba(52,211,153,0.2);
@@ -32,7 +26,6 @@
   --down-bg: rgba(248,113,113,0.06);
   --down-border: rgba(248,113,113,0.2);
   --gold: #f59e0b;
-  --gold-bg: rgba(245,158,11,0.08);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { background: var(--bg-deep); }
@@ -47,984 +40,361 @@ body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
-
-/* Three.js 入场动画 */
-#intro-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999;
-  display: flex; align-items: center; justify-content: center; flex-direction: column;
-  background: radial-gradient(ellipse at center, rgba(14,14,22,0.8) 0%, rgba(7,7,13,0.95) 70%);
-  transition: opacity 1s ease-out;
-}
-#intro-overlay.fade-out { opacity: 0; pointer-events: none; }
-#intro-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-#intro-text {
-  position: relative; z-index: 1; text-align: center;
-  margin-top: 60%;
-}
-#intro-text p {
-  font-size: 12px; color: var(--accent-light); letter-spacing: 4px;
-  opacity: 0; animation: introFadeIn 0.8s 1.5s forwards;
-}
-@keyframes introFadeIn {
-  to { opacity: 1; }
-}
-
-/* 背景粒子(主界面) */
-#bg-canvas {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  z-index: 0; pointer-events: none; opacity: 0.6;
-}
 .up { color: var(--up); }
 .down { color: var(--down); }
 
 .card { background: rgba(20,20,31,0.85); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
 .badge {
-  display: inline-flex; align-items: center;
-  padding: 2px 8px; border-radius: 999px;
-  font-size: 10px; font-weight: 600; white-space: nowrap;
-}
-.badge-up { background: var(--up-bg); color: var(--up); border: 1px solid var(--up-border); }
-.badge-down { background: var(--down-bg); color: var(--down); border: 1px solid var(--down-border); }
-.badge-neutral { background: rgba(85,85,112,0.1); color: var(--text-muted); border: 1px solid var(--border-light); }
-.badge-accent { background: var(--accent-dim); color: var(--accent-light); border: 1px solid rgba(124,92,252,0.25); }
-
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
-  padding: 5px 12px; border-radius: 8px;
-  font-size: 11px; font-weight: 600; cursor: pointer; border: none;
-  transition: all 0.15s;
-}
-.btn-buy { background: var(--down); color: #fff; }
-.btn-buy:hover { background: #ef4444; transform: translateY(-1px); }
-.btn-sell { background: var(--up); color: #fff; }
-.btn-sell:hover { background: #10b981; transform: translateY(-1px); }
-.btn-refresh svg { transition: transform 0.3s; }
-.btn-refresh.spinning svg { animation: spin 0.8s linear infinite; }
-@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-.btn-accent { background: var(--accent); color: #fff; }
-.btn-accent:hover { background: var(--accent-light); transform: translateY(-1px); }
-.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-light); }
-.btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); }
-
-input, select {
-  background: var(--bg-deep); border: 1px solid var(--border-light);
-  color: var(--text-primary); padding: 8px 16px !important; border-radius: 8px;
-  outline: none; font-size: 10px !important; transition: border-color 0.15s;
-}
-input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
-input::placeholder { color: var(--text-muted); }
-
-.tab {
-  padding: 4px 10px; cursor: pointer; font-size: 11px;
-  color: var(--text-muted); border-radius: 6px; transition: all 0.15s;
-}
-.tab:hover { color: var(--text-secondary); background: rgba(255,255,255,0.03); }
-.tab.active { color: var(--accent-light); background: var(--accent-dim); }
-
-.strat-tab {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 5px 12px; border-radius: 8px; cursor: pointer;
-  font-size: 11px; font-weight: 500;
-  color: var(--text-muted); border: 1px solid var(--border);
-  background: var(--bg-deep); transition: all 0.15s;
+  padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 500;
 }
-.strat-tab:hover { color: var(--text-secondary); background: var(--bg-elevated); }
-.strat-tab.active { color: var(--accent-light); background: var(--accent-dim); border-color: rgba(124,92,252,0.3); }
-
-/* Skeleton loading */
-@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-.skeleton {
-  background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--border-light) 50%, var(--bg-elevated) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 6px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .desktop-split { flex-direction: column !important; }
-  .desktop-split > div { width: 100% !important; }
-  .header-stats { flex-wrap: wrap; gap: 6px !important; }
-  .header-index { display: none !important; }
-}
-
-@keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
-.fi { animation: fadeIn 0.3s ease; }
-
-table { width: 100%; border-collapse: collapse; }
-th { text-align: left; padding: 6px 8px; color: var(--text-muted); font-size: 10px; font-weight: 600; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
-td { padding: 8px; font-size: 12px; color: var(--text-secondary); border-bottom: 1px solid rgba(30,30,48,0.5); }
-tr:hover td { background: rgba(255,255,255,0.015); color: var(--text-primary); }
-
-.s-line { width: 3px; height: 16px; border-radius: 2px; flex-shrink: 0; }
-.s-drop {
-  position: absolute; top: calc(100% + 4px); left: 0; right: 48px;
+.strategy-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.strategy-tab {
+  padding: 8px 16px; border-radius: 10px; cursor: pointer; font-size: 13px;
   background: var(--bg-elevated); border: 1px solid var(--border-light);
-  border-radius: 10px; z-index: 100; max-height: 160px; overflow: auto;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  color: var(--text-secondary); transition: all 0.2s;
 }
-.s-drop > div { padding: 8px 12px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(42,42,64,0.5); }
-.s-drop > div:last-child { border-bottom: none; }
-.s-drop > div:hover { background: rgba(124,92,252,0.08); }
+.strategy-tab:hover { border-color: var(--accent); color: var(--text-primary); }
+.strategy-tab.active {
+  background: var(--accent-dim); border-color: var(--accent); color: var(--accent-light);
+}
+.accent-dim { background: rgba(124,92,252,0.1); border: 1px solid rgba(124,92,252,0.2); }
+.up-dim { background: var(--up-bg); border: 1px solid var(--up-border); }
+.down-dim { background: var(--down-bg); border: 1px solid var(--down-border); }
+.stat-value { font-size: 20px; font-weight: 600; line-height: 1.2; }
+.stat-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+
+/* 策略卡片 */
+.strategy-card {
+  background: rgba(20,20,31,0.85); border: 1px solid var(--border); border-radius: 14px; padding: 16px;
+  transition: all 0.2s;
+}
+.strategy-card:hover { border-color: var(--border-light); }
+.strategy-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.progress-bar { height: 4px; border-radius: 2px; background: var(--bg-elevated); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+
+/* 持仓表格 */
+.pos-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.pos-table th { text-align: left; padding: 8px 6px; color: var(--text-muted); font-weight: 400; border-bottom: 1px solid var(--border); }
+.pos-table td { padding: 8px 6px; border-bottom: 1px solid var(--border); }
+
+/* 刷新按钮 */
+#refresh-btn {
+  position: fixed; bottom: 24px; right: 24px; z-index: 100;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--accent); border: none; color: white; font-size: 20px;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(124,92,252,0.3);
+  transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+}
+#refresh-btn:hover { transform: scale(1.05); box-shadow: 0 6px 24px rgba(124,92,252,0.4); }
+#refresh-btn:active { transform: scale(0.95); }
+#refresh-btn.loading { opacity: 0.7; pointer-events: none; }
 </style>
 </head>
 <body>
 
-<!-- Three.js 入场动画覆盖层 (已禁用) -->
-<!-- <div id="intro-overlay">
-  <canvas id="intro-canvas"></canvas>
-  <div id="intro-text">
-    <p>QUANTITATIVE TRADING SYSTEM</p>
-  </div>
-</div> -->
-
-<!-- 背景粒子画布 -->
-<canvas id="bg-canvas"></canvas>
-
-<div x-data="app()" x-init="init()" style="position:relative;z-index:1;background:transparent">
-
-<!-- ═══ TOP BAR ═══ -->
-<header style="background:rgba(14,14,22,0.9);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;">
-  <div style="display:flex;align-items:center;min-height:44px;padding:8px 16px;flex-wrap:wrap;gap:8px" class="header-stats">
-    <div style="display:flex;align-items:center;gap:8px;margin-right:12px">
-      <div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#7c5cfc,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:14px">🥚</div>
-      <span style="font-size:13px;font-weight:700">蛋蛋交易系统</span>
+<div class="max-w-7xl mx-auto px-4 py-6">
+  <!-- 顶部标题 -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">🥚 蛋蛋交易系统 <span class="text-xs text-[var(--accent-light)] ml-2">v2.0</span></h1>
+      <p id="time-display" class="text-xs text-[var(--text-muted)] mt-1"></p>
     </div>
-    <template x-if="data.index.name">
-      <div class="header-index" style="display:flex;align-items:center;gap:6px;padding:3px 10px;background:var(--bg-deep);border:1px solid var(--border);border-radius:8px">
-        <span style="font-size:10px;font-weight:600;color:var(--text-secondary)" x-text="data.index.name"></span>
-        <span class="mono" style="font-size:12px;font-weight:700" :class="(data.index.change_pct||0)>=0?'up':'down'" x-text="(data.index.price||0).toFixed(2)"></span>
-        <span style="font-size:10px" :class="(data.index.change_pct||0)>=0?'up':'down'" x-text="((data.index.change_pct||0)>=0?'+':'')+(data.index.change_pct||0).toFixed(2)+'%'"></span>
-        <span class="badge" style="font-size:8px" :class="data.index.above_ma5?'badge-up':'badge-down'" x-text="data.index.above_ma5?'MA5↑':'MA5↓'"></span>
-      </div>
-    </template>
-    <div style="display:flex;align-items:center;gap:12px;margin-left:auto;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:4px">
-        <span style="font-size:10px;color:var(--text-muted)">现金</span>
-        <span class="mono" style="font-size:12px;font-weight:500;color:var(--text-secondary)">¥<span x-text="fmt(data.account.cash)"></span></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:4px">
-        <span style="font-size:10px;color:var(--text-muted)">总资产</span>
-        <span class="mono" style="font-size:13px;font-weight:700;color:var(--accent-light)">¥<span x-text="fmt(data.account.total_value)"></span></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:4px">
-        <span style="font-size:10px;color:var(--text-muted)">收益</span>
-        <span class="mono" style="font-size:13px;font-weight:700" :class="(data.account.total_profit||0)>=0?'up':'down'">
-          <span x-text="((data.account.total_profit||0)>=0?'+':'')+fmt(data.account.total_profit)"></span>
-        </span>
-      </div>
-      <div style="display:flex;align-items:center;gap:4px">
-        <span style="font-size:10px;color:var(--text-muted)">收益率</span>
-        <span class="mono" style="font-size:13px;font-weight:700" :class="roi>=0?'up':'down'">
-          <span x-text="(roi>=0?'+':'')+roi.toFixed(2)+'%'"></span>
-        </span>
-      </div>
-      <span style="font-size:9px;color:var(--text-muted)" x-text="lastUpdate"></span>
-      <button @click="refresh()" class="btn-refresh" :class="refreshing&&'spinning'" title="刷新数据" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border-light);background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;flex-shrink:0" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-light)'">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-secondary)"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-      </button>
+    <div class="flex items-center gap-3">
+      <span id="market-status" class="badge bg-[var(--up-bg)] border-[var(--up-border)] text-[var(--up)]">盘中</span>
+      <span id="last-update" class="text-xs text-[var(--text-muted)]">--</span>
     </div>
   </div>
-  
-  <!-- 策略选择器 -->
-  <div style="display:flex;align-items:center;gap:6px;padding:0 16px 8px;flex-wrap:wrap">
-    <button class="strat-tab" :class="currentStrategy===0&&'active'" @click="switchStrategy(0)">
-      📊 总览
-    </button>
-    <template x-for="s in strategies" :key="s.id">
-      <button class="strat-tab" :class="currentStrategy===s.id&&'active'" @click="switchStrategy(s.id)">
-        <span x-text="s.icon||'📈'"></span>
-        <span x-text="s.name"></span>
-        <span class="badge badge-neutral" style="font-size:8px" x-text="'¥'+(s.capital/10000).toFixed(0)+'万'"></span>
-        <span class="badge" style="font-size:8px" :class="(s.stats.win_rate||0)>=50?'badge-up':'badge-down'" x-show="s.stats.total_trades>0" x-text="s.stats.win_rate+'%胜率'"></span>
-      </button>
-    </template>
-  </div>
-</header>
 
-<!-- ═══ BODY ═══ -->
-<div class="desktop-split" style="display:flex;gap:12px;padding:12px;overflow:auto">
-
-  <!-- LEFT (60%) -->
-  <div style="width:60%;display:flex;flex-direction:column;gap:12px">
-
-    <!-- 净值走势 -->
-    <div class="card" style="min-height:200px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="s-line" style="background:linear-gradient(180deg,#7c5cfc,#a78bfa)"></div>
-          <span style="font-size:13px;font-weight:600">净值走势</span>
-          <span class="badge badge-accent" x-show="data.stats.win_rate" x-text="'胜率 '+data.stats.win_rate+'%'"></span>
-          <span class="badge" :class="(data.stats.net_profit||0)>=0?'badge-up':'badge-down'" x-show="data.stats.net_profit" x-text="'净利 ¥'+(data.stats.net_profit||0).toFixed(0)"></span>
-        </div>
-        <div style="display:flex;gap:3px">
-          <button class="tab" :class="eqRange===7&&'active'" @click="eqRange=7;renderChart()">7D</button>
-          <button class="tab" :class="eqRange===30&&'active'" @click="eqRange=30;renderChart()">30D</button>
-          <button class="tab" :class="eqRange===60&&'active'" @click="eqRange=60;renderChart()">ALL</button>
-        </div>
-      </div>
-      <!-- Loading skeleton -->
-      <div x-show="loading" class="skeleton" style="height:160px;width:100%"></div>
-      <div id="eqChart" :style="loading?'height:0;overflow:hidden':'height:160px;width:100%'"></div>
-      <!-- 关键统计 -->
-      <div :style="loading?'display:none':'display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)'">
-        <div><div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">总交易</div><div class="mono" style="font-size:14px;font-weight:700" x-text="data.stats.total_trades||0"></div></div>
-        <div><div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">盈利笔数</div><div class="mono up" style="font-size:14px;font-weight:700" x-text="data.stats.win_trades||0"></div></div>
-        <div><div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">亏损笔数</div><div class="mono down" style="font-size:14px;font-weight:700" x-text="data.stats.loss_trades||0"></div></div>
-        <div><div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">最大盈利</div><div class="mono up" style="font-size:14px;font-weight:700" x-text="'¥'+(data.stats.max_profit||0).toFixed(0)"></div></div>
-        <div><div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">最大亏损</div><div class="mono down" style="font-size:14px;font-weight:700" x-text="'¥'+(data.stats.max_loss||0).toFixed(0)"></div></div>
-      </div>
-    </div>
-
-    <!-- 策略表现概览（总览模式） -->
-    <div class="card" x-show="currentStrategy===0 && strategies.length>0" style="padding:12px 16px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
-        <div class="s-line" style="background:var(--gold)"></div>
-        <span style="font-size:12px;font-weight:600">策略表现</span>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
-        <template x-for="s in strategies" :key="s.id">
-          <div style="padding:10px 12px;background:var(--bg-deep);border-radius:10px;border-left:3px solid var(--accent)">
-            <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px">
-              <span x-text="s.icon||'📈'"></span>
-              <span style="font-size:12px;font-weight:600" x-text="s.name"></span>
-              <span class="badge badge-neutral" style="font-size:8px;margin-left:auto" x-text="'¥'+(s.capital/10000).toFixed(0)+'万'"></span>
-            </div>
-            <div style="display:flex;gap:12px">
-              <div><div style="font-size:9px;color:var(--text-muted)">交易</div><div class="mono" style="font-size:12px;font-weight:600" x-text="s.stats.total_trades||'0'"></div></div>
-              <div><div style="font-size:9px;color:var(--text-muted)">胜率</div><div class="mono" style="font-size:12px;font-weight:600" :class="(s.stats.win_rate||0)>=50?'up':'down'" x-text="(s.stats.win_rate||0)+'%'"></div></div>
-              <div><div style="font-size:9px;color:var(--text-muted)">净利</div><div class="mono" style="font-size:12px;font-weight:600" :class="(s.stats.net_profit||0)>=0?'up':'down'" x-text="'¥'+(s.stats.net_profit||0).toFixed(0)"></div></div>
-            </div>
-          </div>
-        </template>
-      </div>
-    </div>
-
-    <!-- 当前持仓 -->
+  <!-- 资金总览 -->
+  <div class="grid grid-cols-4 gap-3 mb-4">
     <div class="card">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <div class="s-line" style="background:var(--up)"></div>
-        <span style="font-size:13px;font-weight:600">当前持仓</span>
-        <span class="badge badge-neutral" x-text="Object.keys(filteredPositions).length+'只'"></span>
-        <span style="flex:1"></span>
-        <span style="font-size:10px;color:var(--text-muted)" x-text="Object.keys(filteredPositions).length?'下一操作 · 明早09:30自动卖出':'空仓 · 等待14:50自动选股'"></span>
+      <div class="stat-label">总资产</div>
+      <div id="total-value" class="stat-value mono">--</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">可用现金</div>
+      <div id="cash" class="stat-value mono">--</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">总盈亏</div>
+      <div id="total-profit" class="stat-value mono">--</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">收益率</div>
+      <div id="total-return" class="stat-value mono">--</div>
+    </div>
+  </div>
+
+  <!-- 大盘 + 月度盈亏占位 -->
+  <div class="grid grid-cols-3 gap-3 mb-6">
+    <div class="card col-span-1">
+      <div class="stat-label mb-2">上证指数</div>
+      <div id="index-price" class="stat-value mono" style="font-size:24px;">--</div>
+      <div id="index-change" class="mono text-xs" style="margin-top:4px;">--</div>
+      <div id="index-ma" class="text-xs text-[var(--text-muted)] mt-1">MA5:-- MA10:--</div>
+    </div>
+    <div class="card col-span-2">
+      <div class="stat-label mb-2">持仓净值走势</div>
+      <div id="equity-chart" style="height:100px;"></div>
+    </div>
+  </div>
+
+  <!-- 三策略概览 -->
+  <div class="grid grid-cols-3 gap-3 mb-6">
+    <div class="strategy-card" data-strategy="etf">
+      <div class="strategy-title">
+        <span style="display:inline-block;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#818cf8,#6366f1);text-align:center;line-height:28px;font-size:14px;">🔄</span>
+        ETF轮动 40%
       </div>
-      <!-- Loading -->
-      <div x-show="loading" style="display:flex;flex-direction:column;gap:8px">
-        <div class="skeleton" style="height:60px"></div>
-        <div class="skeleton" style="height:60px"></div>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <div><div class="text-xs text-[var(--text-muted)]">已用/分配</div><div class="mono text-sm"><span class="etf-used">¥0</span><span class="text-[var(--text-muted)]"> / </span><span class="etf-alloc">¥40,000</span></div></div>
+        <div><div class="text-xs text-[var(--text-muted)]">持仓</div><div class="mono text-sm"><span class="etf-pos-count">0</span> 只</div></div>
       </div>
-      <!-- Empty state -->
-      <div x-show="!loading && Object.keys(filteredPositions).length===0" style="text-align:center;padding:24px;color:var(--text-muted)">
-        <div style="font-size:28px;margin-bottom:8px">🏖️</div>
-        <div style="font-size:12px">当前空仓，等待交易信号</div>
+      <div class="progress-bar mb-2"><div class="progress-fill etf-progress" style="width:0%;background:#818cf8;"></div></div>
+      <div class="flex justify-between text-xs">
+        <span class="text-[var(--text-muted)]">可用</span>
+        <span class="mono etf-available">¥40,000</span>
       </div>
-      <!-- Positions -->
-      <template x-for="(pos, code) in filteredPositions" :key="code">
-        <div class="fi" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg-deep);border-radius:12px;margin-bottom:6px">
-          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#34d399,#2dd4bf);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">💎</div>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <span style="font-size:14px;font-weight:700" x-text="pos.stock_name||code"></span>
-              <span class="mono" style="font-size:10px;color:var(--text-muted)" x-text="code"></span>
-              <span class="badge badge-accent" style="font-size:8px" x-show="pos.strategy_id" x-text="strategies.find(s=>s.id===pos.strategy_id)?.name||''"></span>
-            </div>
-            <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap">
-              <span style="font-size:11px;color:var(--text-secondary)"><span style="color:var(--text-muted)">数量</span> <span class="mono" style="font-weight:600" x-text="pos.shares+'股'"></span></span>
-              <span style="font-size:11px;color:var(--text-secondary)"><span style="color:var(--text-muted)">成本</span> <span class="mono" style="font-weight:600" x-text="'¥'+Number(pos.avg_cost).toFixed(2)"></span></span>
-              <span style="font-size:11px;color:var(--text-secondary)"><span style="color:var(--text-muted)">市值</span> <span class="mono" style="font-weight:600" x-text="'¥'+(pos.shares*(pos.current_price||pos.avg_cost)).toFixed(0)"></span></span>
-            </div>
-          </div>
-          <div style="text-align:right">
-            <div class="mono" style="font-size:18px;font-weight:800" :class="(pos.profit_pct||0)>=0?'up':'down'" x-text="((pos.profit_pct||0)>=0?'+':'')+(pos.profit_pct||0).toFixed(2)+'%'"></div>
-            <button class="btn btn-sell" style="margin-top:4px;font-size:10px;padding:3px 10px" @click="sellStock(code,pos.shares)">卖出</button>
-          </div>
-        </div>
-      </template>
     </div>
 
-    <!-- 交易记录 -->
-    <div class="card" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <div class="s-line" style="background:var(--accent)"></div>
-        <span style="font-size:13px;font-weight:600">交易记录</span>
-        <span class="badge badge-neutral" x-text="data.trades.length+'笔'+(tradeHasMore?'+':'')"></span>
-        <span style="flex:1"></span>
-        <div style="display:flex;gap:3px">
-          <button class="tab" :class="tradeRange==='7d'&&'active'" @click="tradeRange='7d'">7天</button>
-          <button class="tab" :class="tradeRange==='30d'&&'active'" @click="tradeRange='30d'">30天</button>
-          <button class="tab" :class="tradeRange==='all'&&'active'" @click="tradeRange='all'">全部</button>
-        </div>
+    <div class="strategy-card" data-strategy="small_cap">
+      <div class="strategy-title">
+        <span style="display:inline-block;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#f472b6,#ec4899);text-align:center;line-height:28px;font-size:14px;">📊</span>
+        小市值 35%
       </div>
-      <div style="overflow:auto;flex:1">
-        <table>
-          <thead><tr><th>时间</th><th>操作</th><th>股票</th><th>策略</th><th>价格</th><th>数量</th><th>盈亏</th></tr></thead>
-          <tbody>
-            <template x-for="t in filteredTrades" :key="t.id">
-              <tr class="fi">
-                <td class="mono" style="font-size:10px" x-text="t.timestamp?.slice(5,16)||''"></td>
-                <td><span class="badge" :class="t.action==='buy'?'badge-down':'badge-up'" x-text="t.action==='buy'?'买入':'卖出'"></span></td>
-                <td><span style="font-weight:600" x-text="t.stock_name||t.stock_code"></span> <span class="mono" style="font-size:9px;color:var(--text-muted)" x-text="t.stock_code"></span></td>
-                <td><span class="badge badge-neutral" style="font-size:9px" x-text="strategyName(t.strategy_id)"></span></td>
-                <td class="mono" x-text="'¥'+Number(t.price).toFixed(2)"></td>
-                <td class="mono" x-text="t.shares"></td>
-                <td class="mono" :class="(t.profit||0)>=0?'up':'down'" x-text="t.action==='sell'?((t.profit>=0?'+':'')+Number(t.profit).toFixed(0)+' ('+((t.profit/(t.amount-t.profit))*100).toFixed(2)+'%)'):'-'"></td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-        <div x-show="tradeLoading" style="text-align:center;padding:12px;color:var(--text-muted);font-size:11px">加载中...</div>
-        <div x-show="data.trades.length===0 && !tradeLoading" style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">暂无交易记录</div>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <div><div class="text-xs text-[var(--text-muted)]">已用/分配</div><div class="mono text-sm"><span class="sc-used">¥0</span><span class="text-[var(--text-muted)]"> / </span><span class="sc-alloc">¥35,000</span></div></div>
+        <div><div class="text-xs text-[var(--text-muted)]">持仓</div><div class="mono text-sm"><span class="sc-pos-count">0</span> 只</div></div>
       </div>
-      <!-- 分页器 -->
-      <div x-show="tradeTotal>tradePageSize" style="display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 0;border-top:1px solid var(--border);margin-top:8px">
-        <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" :disabled="tradePage<=1" @click="gotoPage(tradePage-1)">←</button>
-        <template x-for="p in Array.from({length:Math.min(totalPages,7)},(_,i)=>{
-          if(totalPages<=7) return i+1;
-          if(tradePage<=4) return i+1;
-          if(tradePage>=totalPages-3) return totalPages-6+i;
-          return tradePage-3+i;
-        })" :key="p">
-          <button class="btn" :class="p===tradePage?'btn-accent':'btn-ghost'" style="padding:4px 10px;font-size:11px;min-width:28px" @click="gotoPage(p)" x-text="p"></button>
-        </template>
-        <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" :disabled="tradePage>=totalPages" @click="gotoPage(tradePage+1)">→</button>
-        <span style="font-size:10px;color:var(--text-muted);margin-left:8px" x-text="'共'+tradeTotal+'笔'"></span>
+      <div class="progress-bar mb-2"><div class="progress-fill sc-progress" style="width:0%;background:#f472b6;"></div></div>
+      <div class="flex justify-between text-xs">
+        <span class="text-[var(--text-muted)]">可用</span>
+        <span class="mono sc-available">¥35,000</span>
+      </div>
+    </div>
+
+    <div class="strategy-card" data-strategy="white_horse">
+      <div class="strategy-title">
+        <span style="display:inline-block;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#34d399,#10b981);text-align:center;line-height:28px;font-size:14px;">🐴</span>
+        白马股 25%
+      </div>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <div><div class="text-xs text-[var(--text-muted)]">已用/分配</div><div class="mono text-sm"><span class="wh-used">¥0</span><span class="text-[var(--text-muted)]"> / </span><span class="wh-alloc">¥25,000</span></div></div>
+        <div><div class="text-xs text-[var(--text-muted)]">持仓</div><div class="mono text-sm"><span class="wh-pos-count">0</span> 只</div></div>
+      </div>
+      <div class="progress-bar mb-2"><div class="progress-fill wh-progress" style="width:0%;background:#34d399;"></div></div>
+      <div class="flex justify-between text-xs">
+        <span class="text-[var(--text-muted)]">可用</span>
+        <span class="mono wh-available">¥25,000</span>
       </div>
     </div>
   </div>
 
-  <!-- RIGHT (40%) -->
-  <div style="width:40%;display:flex;flex-direction:column;gap:12px">
+  <!-- 持仓表格 -->
+  <div class="card mb-6">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-semibold">📋 当前持仓</h3>
+      <span id="pos-count" class="text-xs text-[var(--text-muted)]">0 只</span>
+    </div>
+    <div id="position-table-wrapper">
+      <table class="pos-table">
+        <thead><tr>
+          <th>代码</th><th>名称</th><th>策略</th><th>持股</th><th>成本</th><th>现价</th><th>涨跌</th><th>市值</th><th>盈亏</th>
+        </tr></thead>
+        <tbody id="pos-tbody"></tbody>
+      </table>
+      <div id="no-pos" class="text-center py-8 text-[var(--text-muted)] text-sm">暂无持仓，等待策略建仓信号</div>
+    </div>
+  </div>
 
-    <!-- 手动交易面板 -->
+  <!-- 交易记录 -->
+  <div class="grid grid-cols-2 gap-3 mb-6">
     <div class="card">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <div class="s-line" style="background:var(--down)"></div>
-        <span style="font-size:13px;font-weight:600">手动交易</span>
-      </div>
-      <div style="position:relative">
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <div style="flex:1;position:relative">
-            <input type="text" x-model="code" @input="searchStocks(code)" placeholder="股票代码/名称" style="width:100%">
-            <div class="s-drop" x-show="suggestions.length>0" @click.outside="suggestions=[]">
-              <template x-for="s in suggestions" :key="s.code">
-                <div @click="code=s.code;suggestions=[]">
-                  <span x-text="s.name"></span>
-                  <span class="mono" style="color:var(--text-muted);font-size:10px" x-text="s.code"></span>
-                </div>
-              </template>
-            </div>
-          </div>
-          <input type="number" x-model.number="shares" step="100" min="100" placeholder="数量" style="width:80px">
-        </div>
-        <input type="text" x-model="reason" placeholder="交易理由（可选）" style="width:100%;margin-bottom:8px">
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-buy" style="flex:1" @click="mode='buy';trade()">买入</button>
-          <button class="btn btn-sell" style="flex:1" @click="mode='sell';trade()">卖出</button>
-        </div>
-        <div x-show="msg" style="margin-top:8px;padding:6px 10px;border-radius:6px;font-size:11px" :style="msgOk?'background:var(--up-bg);color:var(--up)':'background:var(--down-bg);color:var(--down)'" x-text="msg"></div>
-      </div>
+      <h3 class="text-sm font-semibold mb-3">📜 最近交易</h3>
+      <div id="recent-trades" class="text-sm text-[var(--text-secondary)]">加载中...</div>
     </div>
-
-    <!-- 价值分析 -->
     <div class="card">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <div class="s-line" style="background:var(--gold)"></div>
-        <span style="font-size:13px;font-weight:600">🔍 股票分析</span>
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <input type="text" x-model="queryCode" @keyup.enter="analyze()" placeholder="输入股票代码" style="flex:1">
-        <button class="btn btn-accent" @click="analyze()" :disabled="analyzing">
-          <span x-show="!analyzing">分析</span>
-          <span x-show="analyzing">分析中...</span>
-        </button>
-      </div>
-      <!-- 分析结果 -->
-      <template x-if="analyzeResult">
-        <div class="fi" style="background:var(--bg-deep);border-radius:10px;padding:12px">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <span style="font-size:14px;font-weight:700" x-text="analyzeResult.name||analyzeResult.stock_code"></span>
-            <span class="badge" :class="(analyzeResult.total_score||analyzeResult.score||0)>=70?'badge-up':(analyzeResult.total_score||analyzeResult.score||0)>=40?'badge-neutral':'badge-down'" x-text="'评分 '+(analyzeResult.total_score||analyzeResult.score||0)"></span>
-            <span class="badge badge-accent" x-show="analyzeResult.stars||analyzeResult.rating" x-text="'⭐'.repeat(analyzeResult.stars||(typeof analyzeResult.rating==='number'?analyzeResult.rating:0))"></span>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
-            <div><span style="color:var(--text-muted)">PE(TTM)</span> <span class="mono" style="font-weight:600" x-text="(analyzeResult.pe||analyzeResult.valuation?.current_pe||analyzeResult.indicators?.PE?.value)||'N/A'"></span></div>
-            <div><span style="color:var(--text-muted)">ROE</span> <span class="mono" style="font-weight:600" x-text="(analyzeResult.roe||analyzeResult.indicators?.ROE?.value)?((analyzeResult.roe||analyzeResult.indicators?.ROE?.value)+'%'):'N/A'"></span></div>
-            <div><span style="color:var(--text-muted)">目标价</span> <span class="mono up" style="font-weight:600" x-text="analyzeResult.target_price?'¥'+analyzeResult.target_price:'N/A'"></span></div>
-            <div><span style="color:var(--text-muted)">止损价</span> <span class="mono down" style="font-weight:600" x-text="(analyzeResult.stop_loss||analyzeResult.stop_price)?'¥'+(analyzeResult.stop_loss||analyzeResult.stop_price):'N/A'"></span></div>
-          </div>
-          <div x-show="analyzeResult.summary" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-secondary);line-height:1.5" x-text="analyzeResult.summary"></div>
-        </div>
-      </template>
+      <h3 class="text-sm font-semibold mb-3">📊 交易统计</h3>
+      <div id="trade-stats" class="text-sm text-[var(--text-secondary)]">加载中...</div>
     </div>
+  </div>
 
-    <!-- 复盘日志 -->
-    <div class="card" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <div class="s-line" style="background:#60a5fa"></div>
-        <span style="font-size:13px;font-weight:600">📝 复盘日志</span>
-        <span class="badge badge-neutral" x-text="reviewTotal+'条'"></span>
-      </div>
-      <div style="overflow:auto;flex:1">
-        <template x-for="(r,idx) in data.reviews" :key="r.id||r.timestamp">
-          <div class="fi" style="padding:10px;background:var(--bg-deep);border-radius:8px;margin-bottom:6px;cursor:pointer" @click="expandedReview===idx?expandedReview=null:expandedReview=idx">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-              <span style="font-size:10px;color:var(--text-muted)" x-text="r.timestamp?.slice(0,16)||r.date||''"></span>
-              <template x-for="tag in parseTags(r.tags)" :key="tag">
-                <span class="badge badge-accent" style="font-size:8px" x-text="tag"></span>
-              </template>
-              <span style="margin-left:auto;font-size:9px;color:var(--text-muted)" x-text="expandedReview===idx?'▲ 收起':'▼ 展开'"></span>
-            </div>
-            <div :style="expandedReview===idx?'white-space:pre-wrap;font-size:11px;color:var(--text-secondary);line-height:1.6':'font-size:11px;color:var(--text-secondary);line-height:1.5;max-height:36px;overflow:hidden'" x-text="r.content||r.summary||''"></div>
-          </div>
-        </template>
-        <div x-show="reviewLoading" style="text-align:center;padding:12px;color:var(--text-muted);font-size:11px">加载中...</div>
-        <div x-show="data.reviews.length===0 && !reviewLoading" style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">暂无复盘记录</div>
-      </div>
-      <!-- 复盘分页器 -->
-      <div x-show="reviewTotal>reviewPageSize" style="display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 0;border-top:1px solid var(--border);margin-top:6px">
-        <button class="btn btn-ghost" style="padding:3px 7px;font-size:10px" :disabled="reviewPage<=1" @click="gotoReviewPage(reviewPage-1)">←</button>
-        <template x-for="p in Array.from({length:Math.min(reviewTotalPages,5)},(_,i)=>{
-          if(reviewTotalPages<=5) return i+1;
-          if(reviewPage<=3) return i+1;
-          if(reviewPage>=reviewTotalPages-2) return reviewTotalPages-4+i;
-          return reviewPage-2+i;
-        })" :key="p">
-          <button class="btn" :class="p===reviewPage?'btn-accent':'btn-ghost'" style="padding:3px 8px;font-size:10px;min-width:24px" @click="gotoReviewPage(p)" x-text="p"></button>
-        </template>
-        <button class="btn btn-ghost" style="padding:3px 7px;font-size:10px" :disabled="reviewPage>=reviewTotalPages" @click="gotoReviewPage(reviewPage+1)">→</button>
-        <span style="font-size:9px;color:var(--text-muted);margin-left:6px" x-text="'共'+reviewTotal+'条'"></span>
-      </div>
-    </div>
+  <!-- 执行日志 -->
+  <div class="card">
+    <h3 class="text-sm font-semibold mb-3">📝 复盘日志</h3>
+    <div id="review-log" class="text-sm text-[var(--text-secondary)]">加载中...</div>
   </div>
 </div>
-</div>
+
+<!-- 刷新按钮 -->
+<button id="refresh-btn" onclick="refreshData()">↻</button>
 
 <script>
-function app(){
-  return {
-    loading: true,
-    refreshing: false,
-    data: { account:{cash:0,total_value:300000,total_profit:0}, positions:{}, trades:[], reviews:[], equity:[], index:{}, stats:{} },
-    strategies: [],
-    currentStrategy: 0,
-    eqRange: 30,
-    tradeRange: '30d',
-    tradePage: 1,
-    tradeHasMore: true,
-    tradeLoading: false,
-    tradeTotal: 0,
-    tradePageSize: 10,
-    chart: null,
-    lastUpdate: '',
-    // Trade panel
-    mode: 'buy', code: '', shares: 100, reason: '', msg: '', msgOk: false,
-    suggestions: [],
-    // Review pagination
-    reviewPage: 1,
-    reviewTotal: 0,
-    reviewPageSize: 5,
-    reviewLoading: false,
-    expandedReview: null,
-    // Analysis
-    queryCode: '', analyzing: false, analyzeResult: null,
+let chart;
 
-    get roi(){
-      const init = this.data.account.initial_capital || 500000;
-      return ((this.data.account.total_value||init) - init) / init * 100;
-    },
-    get filteredPositions(){
-      if(this.currentStrategy===0) return this.data.positions;
-      const r={};
-      for(const[k,v] of Object.entries(this.data.positions)){
-        if(v.strategy_id===this.currentStrategy) r[k]=v;
-      }
-      return r;
-    },
-    get filteredTrades(){
-      let trades = this.data.trades;
-      if(this.currentStrategy>0) trades = trades.filter(t=>t.strategy_id===this.currentStrategy);
-      if(this.tradeRange==='7d'){
-        const cutoff = new Date(Date.now()-7*86400000).toISOString();
-        trades = trades.filter(t=>(t.timestamp||'')>=cutoff);
-      } else if(this.tradeRange==='30d'){
-        const cutoff = new Date(Date.now()-30*86400000).toISOString();
-        trades = trades.filter(t=>(t.timestamp||'')>=cutoff);
-      }
-      return trades;
-    },
-
-    async init(){
-      await this.load();
-      setInterval(()=>this.load(), 30000);
-    },
-    async refresh(){
-      this.refreshing = true;
-      await this.load();
-      this.refreshing = false;
-    },
-    switchStrategy(id){
-      this.currentStrategy=id;
-      this.load();
-    },
-    async load(){
-      try{
-        const qs = this.currentStrategy>0 ? '?strategy_id='+this.currentStrategy : '';
-        const [pRes,sRes,eRes,iRes] = await Promise.all([
-          fetch('/api/portfolio'+qs),
-          fetch('/api/stats'+qs), fetch('/api/equity'+qs),
-          fetch('/api/index')
-        ]);
-        const [p,s,e,i] = await Promise.all([pRes.json(),sRes.json(),eRes.json(),iRes.json()]);
-
-        this.data.account = p || {cash:0,total_value:300000,total_profit:0};
-        this.data.positions = p.positions || {};
-        this.data.stats = s || {};
-        this.data.equity = Array.isArray(e) ? e : [];
-        this.data.index = i || {};
-
-        // 获取实时行情计算持仓盈亏
-        const posCodes = Object.keys(this.data.positions);
-        if(posCodes.length){
-          try{
-            const qRes = await fetch('/api/quotes/batch');
-            const quotes = await qRes.json();
-            const qMap = {};
-            (Array.isArray(quotes)?quotes:[]).forEach(q=>{ qMap[q.code]=q; });
-            for(const code of posCodes){
-              const pos = this.data.positions[code];
-              const q = qMap[code];
-              if(q && q.price && pos.avg_cost){
-                pos.current_price = q.price;
-                pos.profit_pct = ((q.price - pos.avg_cost) / pos.avg_cost * 100);
-                pos.profit_amt = (q.price - pos.avg_cost) * pos.shares;
-              } else {
-                pos.profit_pct = 0;
-                pos.profit_amt = 0;
-              }
-            }
-          }catch(e){ console.error('Quotes error:', e); }
-        }
-
-        // 加载交易记录（分页）
-        this.tradePage = 1;
-        this.tradeHasMore = true;
-        await this.loadTrades(true);
-
-        // 加载复盘日志（分页）
-        await this.loadReviews();
-
-        this.renderChart();
-        this.lastUpdate = new Date().toLocaleTimeString('zh-CN',{hour12:false});
-        this.loading = false;
-
-        // Load strategies
-        try{
-          const sr = await fetch('/api/strategies');
-          const sd = await sr.json();
-          if(Array.isArray(sd)){
-            const icons = {overnight:'⚡', value:'🏦', trend:'📈'};
-            this.strategies = sd.map(x=>({...x, icon:icons[x.type]||'📊'}));
-          }
-        }catch(e){}
-      }catch(e){ console.error('Load error:', e); }
-    },
-
-    fmt(n){ if(n==null)return'0.00'; return Number(n).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}); },
-    parseTags(tags){
-      if(Array.isArray(tags)) return tags;
-      if(typeof tags==='string' && tags.startsWith('[')){
-        try{ return JSON.parse(tags); }catch(e){ return []; }
-      }
-      return [];
-    },
-    fmtReview(text){
-      if(!text) return '';
-      // 去掉markdown格式符、分隔线、emoji，只保留纯文字摘要
-      return text.replace(/[*#━─═—]+/g,'').replace(/\n+/g,' ').replace(/\s{2,}/g,' ').trim().slice(0,120);
-    },
-
-    renderChart(){
-      setTimeout(()=>{
-        const el=document.getElementById('eqChart'); if(!el||el.offsetWidth===0)return;
-        if(!this.chart) this.chart=echarts.init(el,'dark');
-        let d=this.data.equity;
-        if(this.eqRange<60) d=d.slice(-this.eqRange);
-        if(!d.length) return;
-        this.chart.setOption({
-        backgroundColor:'transparent',
-        tooltip:{trigger:'axis',formatter:p=>p[0].name+'<br/>¥'+Number(p[0].value).toLocaleString()},
-        grid:{left:50,right:12,top:10,bottom:24},
-        xAxis:{type:'category',data:d.map(i=>i.date),axisLine:{lineStyle:{color:'#1e1e30'}},axisLabel:{color:'#555570',fontSize:9}},
-        yAxis:{type:'value',axisLine:{lineStyle:{color:'#1e1e30'}},axisLabel:{color:'#555570',fontSize:9,formatter:v=>'¥'+(v/10000).toFixed(1)+'万'},splitLine:{lineStyle:{color:'#12121e'}}},
-        series:[{type:'line',data:d.map(i=>i.total_value),smooth:true,lineStyle:{color:'#7c5cfc',width:2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(124,92,252,0.25)'},{offset:1,color:'rgba(124,92,252,0)'}])},itemStyle:{color:'#7c5cfc'},symbol:'none'}]
-      });
-      this.chart.resize();
-      }, 100);
-    },
-
-    async trade(){
-      this.msg='';
-      if(!this.code||!this.shares){this.msg='请输入代码和数量';this.msgOk=false;return}
-      if(this.shares%100!==0){this.msg='数量须为100的倍数';this.msgOk=false;return}
-      try{
-        const r=await fetch('/api/trade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:this.mode,stock_code:this.code,shares:this.shares,reason:this.reason})});
-        const d=await r.json();
-        if(d.error){this.msg=d.error;this.msgOk=false}
-        else{this.msg=(this.mode==='buy'?'✅ 买入成功':'✅ 卖出成功');this.msgOk=true;this.code='';this.shares=100;this.reason='';await this.load()}
-      }catch(e){this.msg='失败: '+e.message;this.msgOk=false}
-    },
-    sellStock(code,shares){this.mode='sell';this.code=code;this.shares=shares},
-
-    async analyze(){
-      if(!this.queryCode)return;
-      this.analyzing=true;this.analyzeResult=null;
-      try{const r=await fetch('/api/analyze/'+this.queryCode,{signal:AbortSignal.timeout(120000)});const d=await r.json();this.analyzeResult=d.error?null:d}
-      catch(e){this.analyzeResult=null}
-      finally{this.analyzing=false}
-    },
-    async searchStocks(kw){
-      if(!kw||kw.length<1){this.suggestions=[];return}
-      try{const r=await fetch('/api/search?q='+encodeURIComponent(kw));this.suggestions=await r.json()}catch(e){this.suggestions=[]}
-    },
-    async loadTrades(reset){
-      if(this.tradeLoading) return;
-      this.tradeLoading = true;
-      try{
-        const qs = this.currentStrategy>0 ? '&strategy_id='+this.currentStrategy : '';
-        const r = await fetch('/api/trades?page='+this.tradePage+'&page_size='+this.tradePageSize+qs);
-        const d = await r.json();
-        const trades = d.trades || (Array.isArray(d) ? d : []);
-        this.data.trades = trades;
-        this.tradeHasMore = d.has_more !== false;
-        this.tradeTotal = d.total || 0;
-      }catch(e){ console.error('loadTrades error:', e); }
-      finally{ this.tradeLoading = false; }
-    },
-    async loadMoreTrades(){
-      if(!this.tradeHasMore || this.tradeLoading) return;
-      this.tradePage++;
-      await this.loadTrades(false);
-    },
-    async gotoPage(p){
-      if(p<1) p=1;
-      const maxPage = Math.ceil(this.tradeTotal/this.tradePageSize)||1;
-      if(p>maxPage) p=maxPage;
-      this.tradePage = p;
-      await this.loadTrades(true);
-    },
-    get totalPages(){ return Math.ceil(this.tradeTotal/this.tradePageSize)||1; },
-
-    strategyName(sid){
-      const s = this.strategies.find(x=>x.id===sid);
-      return s ? s.name : (sid===1?'一夜持股':sid===2?'价值投资':sid===3?'趋势跟踪':'未知');
-    },
-
-    // 复盘分页
-    async loadReviews(){
-      this.reviewLoading = true;
-      try{
-        const r = await fetch('/api/daily?page='+this.reviewPage+'&page_size='+this.reviewPageSize);
-        const d = await r.json();
-        this.data.reviews = d.reviews || [];
-        this.reviewTotal = d.total || 0;
-      }catch(e){ console.error('loadReviews error:', e); }
-      finally{ this.reviewLoading = false; }
-    },
-    async gotoReviewPage(p){
-      const maxP = Math.ceil(this.reviewTotal/this.reviewPageSize)||1;
-      if(p<1) p=1; if(p>maxP) p=maxP;
-      this.reviewPage = p;
-      this.expandedReview = null;
-      await this.loadReviews();
-    },
-    get reviewTotalPages(){ return Math.ceil(this.reviewTotal/this.reviewPageSize)||1; }
-  };
+function fmt(n) {
+  if (n === undefined || n === null) return '--';
+  if (typeof n === 'number') return n.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  return n;
 }
-window.addEventListener('resize',()=>{const el=document.getElementById('eqChart');if(el){const c=echarts.getInstanceByDom(el);if(c)c.resize()}});
-</script>
+function fmtP(n) {
+  if (n === undefined || n === null) return '--';
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+}
+function cls(n) { return n >= 0 ? 'up' : 'down'; }
 
-<!-- Three.js 碎片重组特效 (已禁用) -->
-<!--
-<script>
-(function(){
-  // === 配置 ===
-  const PARTICLE_COUNT = 12000;
-  const BG_PARTICLES = 2000;
-  const SCATTER_DURATION = 0.5;  // 初始飞散时间(s)
-  const ASSEMBLE_DURATION = 2.5; // 重组时间(s)
-  const HOLD_DURATION = 1.0;     // 停留时间(s)
-  const FADE_DURATION = 0.8;     // 淡出时间(s)
-  const TOTAL_DURATION = (SCATTER_DURATION+ASSEMBLE_DURATION+HOLD_DURATION+FADE_DURATION)*1000;
+function refreshData() {
+  const btn = document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  
+  fetch('/api/dashboard?t=' + Date.now())
+    .then(r => r.json())
+    .then(d => {
+      render(d);
+      document.getElementById('last-update').textContent = new Date().toLocaleString('zh-CN');
+      btn.classList.remove('loading');
+    })
+    .catch(e => {
+      console.error(e);
+      btn.classList.remove('loading');
+    });
+}
 
-  // === 发光纹理 ===
-  const glowTexture = (function(){
-    const c = document.createElement('canvas'); c.width=64; c.height=64;
-    const ctx = c.getContext('2d');
-    const g = ctx.createRadialGradient(32,32,0,32,32,32);
-    g.addColorStop(0,'rgba(255,255,255,1)');
-    g.addColorStop(0.12,'rgba(255,255,255,0.7)');
-    g.addColorStop(0.35,'rgba(255,255,255,0.2)');
-    g.addColorStop(0.6,'rgba(255,255,255,0.05)');
-    g.addColorStop(1,'rgba(255,255,255,0)');
-    ctx.fillStyle=g; ctx.fillRect(0,0,64,64);
-    return new THREE.CanvasTexture(c);
-  })();
+function render(d) {
+  const a = d.account || {};
+  const idx = d.index || {};
+  const s = d.strategies || {};
 
-  // === 从文字生成目标点云 ===
-  function textToPoints(text, count, spread){
-    const c = document.createElement('canvas');
-    const ctx = c.getContext('2d');
-    c.width = 4096; c.height = 1024;
-    ctx.fillStyle = '#000'; ctx.fillRect(0,0,4096,1024);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 480px -apple-system,PingFang SC,Microsoft YaHei,sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(text, 2048, 512);
-    const data = ctx.getImageData(0,0,4096,1024).data;
-    const pts = [];
-    for(let y=0;y<1024;y+=4){
-      for(let x=0;x<4096;x+=4){
-        if(data[(y*4096+x)*4]>128){
-          pts.push([(x-2048)/2048*spread, (512-y)/1024*spread*0.5, 0]);
-        }
-      }
-    }
-    const result = [];
-    for(let i=0;i<count;i++){
-      if(pts.length>0){
-        result.push(pts[Math.floor(Math.random()*pts.length)]);
-      } else {
-        result.push([(Math.random()-0.5)*spread,(Math.random()-0.5)*spread*0.5,0]);
-      }
-    }
-    return result;
+  // 顶部资金
+  document.getElementById('total-value').textContent = '¥' + fmt(a.total_value);
+  document.getElementById('cash').textContent = '¥' + fmt(a.cash);
+  const profit = a.total_profit || 0;
+  const el = document.getElementById('total-profit');
+  el.textContent = (profit >= 0 ? '+' : '') + '¥' + fmt(profit);
+  el.className = 'stat-value mono ' + cls(profit);
+  const ret = a.total_value && a.initial_capital ? ((a.total_value / a.initial_capital - 1) * 100) : 0;
+  const el2 = document.getElementById('total-return');
+  el2.textContent = fmtP(ret);
+  el2.className = 'stat-value mono ' + cls(ret);
+
+  // 大盘
+  document.getElementById('index-price').textContent = fmt(idx.price);
+  const ic = document.getElementById('index-change');
+  ic.textContent = (idx.change >= 0 ? '+' : '') + fmt(idx.change) + '  (' + fmtP(idx.change_pct) + ')';
+  ic.className = 'mono text-xs ' + cls(idx.change_pct || 0);
+  document.getElementById('index-ma').textContent = 'MA5:' + fmt(idx.ma5) + '  MA10:' + fmt(idx.ma10);
+
+  // 盘中/盘后
+  const ms = document.getElementById('market-status');
+  const h = new Date().getHours();
+  if (h >= 9 && h < 15) { ms.textContent = '📈 盘中'; ms.className = 'badge up-dim'; }
+  else { ms.textContent = '🔒 盘后'; ms.className = 'badge'; ms.style.cssText = 'background:rgba(85,85,112,0.1);border:1px solid rgba(85,85,112,0.2);color:var(--text-muted)'; }
+
+  // 三策略
+  const alloc = d.allocation || {};
+  for (const [key, cfg] of Object.entries({etf:['etf','#818cf8'],small_cap:['sc','#f472b6'],white_horse:['wh','#34d399']})) {
+    const sd = s[key] || {};
+    const prefix = cfg[0];
+    document.querySelector('.' + prefix + '-used').textContent = '¥' + fmt(sd.capital_used);
+    document.querySelector('.' + prefix + '-alloc').textContent = '¥' + fmt(sd.capital_allocated);
+    document.querySelector('.' + prefix + '-pos-count').textContent = sd.position_count || 0;
+    document.querySelector('.' + prefix + '-available').textContent = '¥' + fmt(sd.capital_remaining);
+
+    const pct = sd.capital_allocated > 0 ? (sd.capital_used / sd.capital_allocated * 100) : 0;
+    const bar = document.querySelector('.' + prefix + '-progress');
+    bar.style.width = Math.min(pct, 100) + '%';
+    bar.style.background = cfg[1];
   }
 
-  // === 自定义着色器(碎片重组) ===
-  const vertexShader = `
-    attribute float aSize;
-    attribute vec3 aColor;
-    attribute float aRandom;
-    varying vec3 vColor;
-    varying float vAlpha;
-    uniform float uProgress;
-    uniform float uPixelRatio;
-    uniform float uTime;
-    void main(){
-      vColor = aColor;
-      // 透明度随重组进度增加
-      vAlpha = smoothstep(0.0, 0.3, uProgress) * (0.7 + 0.3*sin(aRandom*6.28+uTime*2.0));
-      vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-      gl_PointSize = aSize * uPixelRatio * (70.0 / -mvPos.z);
-      gl_Position = projectionMatrix * mvPos;
-    }
-  `;
-  const fragmentShader = `
-    varying vec3 vColor;
-    varying float vAlpha;
-    uniform sampler2D uTexture;
-    void main(){
-      vec4 tex = texture2D(uTexture, gl_PointCoord);
-      gl_FragColor = vec4(vColor, vAlpha * tex.a);
-    }
-  `;
-
-  // === 入场动画: 碎片重组 ===
-  const introCanvas = document.getElementById('intro-canvas');
-  const overlay = document.getElementById('intro-overlay');
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 200);
-  camera.position.z = 14;
-  const renderer = new THREE.WebGLRenderer({canvas:introCanvas, alpha:true, antialias:true});
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-  // 生成目标点云("蛋蛋交易系统"文字)
-  const targetPoints = textToPoints('蛋蛋交易系统', PARTICLE_COUNT, 16);
-
-  // 粒子属性
-  const startPos = new Float32Array(PARTICLE_COUNT*3);  // 初始位置(飞散)
-  const targetPos = new Float32Array(PARTICLE_COUNT*3); // 目标位置(文字)
-  const currentPos = new Float32Array(PARTICLE_COUNT*3);
-  const sizes = new Float32Array(PARTICLE_COUNT);
-  const randoms = new Float32Array(PARTICLE_COUNT);
-  const pColors = new Float32Array(PARTICLE_COUNT*3);
-
-  const palette = [
-    [0.49,0.36,0.99],[0.65,0.55,0.98],[0.20,0.83,0.60],
-    [0.96,0.62,0.04],[0.40,0.70,0.99],[0.85,0.40,0.95]
-  ];
-
-  for(let i=0;i<PARTICLE_COUNT;i++){
-    // 初始位置: 球形爆炸分布
-    const theta = Math.random()*Math.PI*2;
-    const phi = Math.acos(Math.random()*2-1);
-    const r = 8 + Math.random()*15;
-    startPos[i*3] = r*Math.sin(phi)*Math.cos(theta);
-    startPos[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
-    startPos[i*3+2] = r*Math.cos(phi);
-    // 目标位置
-    targetPos[i*3] = targetPoints[i][0];
-    targetPos[i*3+1] = targetPoints[i][1];
-    targetPos[i*3+2] = targetPoints[i][2] + (Math.random()-0.5)*0.5;
-    // 当前位置初始化为起始位置
-    currentPos[i*3]=startPos[i*3]; currentPos[i*3+1]=startPos[i*3+1]; currentPos[i*3+2]=startPos[i*3+2];
-    sizes[i] = Math.random()*2.0+0.8;
-    randoms[i] = Math.random();
-    const c = palette[Math.floor(Math.random()*palette.length)];
-    pColors[i*3]=c[0]; pColors[i*3+1]=c[1]; pColors[i*3+2]=c[2];
+  // 持仓
+  const tbody = document.getElementById('pos-tbody');
+  const noPos = document.getElementById('no-pos');
+  const pos = d.positions_by_strategy || {};
+  let allPos = [];
+  for (const [sk, items] of Object.entries(pos)) { allPos = allPos.concat(items); }
+  
+  if (allPos.length === 0) {
+    tbody.innerHTML = '';
+    noPos.style.display = 'block';
+    document.getElementById('pos-count').textContent = '0 只';
+  } else {
+    noPos.style.display = 'none';
+    document.getElementById('pos-count').textContent = allPos.length + ' 只';
+    const nameMap = {etf:'ETF轮动',small_cap:'小市值',white_horse:'白马'};
+    tbody.innerHTML = allPos.map(p => {
+      const stratName = nameMap[Object.entries(pos).find(([k,v]) => v.includes(p))?.[0]] || '--';
+      return '<tr><td class="mono">' + p.stock_name + '</td><td>' + (p.stock_name||'') + '</td><td>' + stratName +
+        '</td><td class="mono">' + (p.shares||0) + '</td><td class="mono">' + fmt(p.avg_cost) +
+        '</td><td class="mono">' + fmt(p.current_price) + '</td><td class="mono ' + cls(p.change_pct) + '">' + fmtP(p.change_pct) +
+        '</td><td class="mono">' + fmt(p.market_value) + '</td><td class="mono ' + cls(p.profit) + '">' + (p.profit>=0?'+':'') + fmt(p.profit) + '</td></tr>';
+    }).join('');
   }
 
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(currentPos, 3));
-  geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-  geo.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1));
-  geo.setAttribute('aColor', new THREE.BufferAttribute(pColors, 3));
-
-  const mat = new THREE.ShaderMaterial({
-    vertexShader, fragmentShader,
-    uniforms:{
-      uProgress:{value:0},
-      uTime:{value:0},
-      uTexture:{value:glowTexture},
-      uPixelRatio:{value:Math.min(window.devicePixelRatio,2)}
-    },
-    transparent:true, depthWrite:false,
-    blending:THREE.AdditiveBlending
-  });
-  const points = new THREE.Points(geo, mat);
-  scene.add(points);
-
-  // 鼠标交互
-  let mouseX=0, mouseY=0;
-  document.addEventListener('mousemove',(e)=>{
-    mouseX = (e.clientX/window.innerWidth-0.5)*2;
-    mouseY = (e.clientY/window.innerHeight-0.5)*2;
-  });
-
-  // easeInOutCubic
-  function ease(t){ return t<0.5?4*t*t*t:(1-Math.pow(-2*t+2,3)/2); }
-
-  let introActive = true;
-  const startTime = Date.now();
-
-  function animateIntro(){
-    if(!introActive) return;
-    requestAnimationFrame(animateIntro);
-    const elapsed = (Date.now()-startTime)/1000;
-    mat.uniforms.uTime.value = elapsed;
-
-    // 计算重组进度
-    let progress = 0;
-    if(elapsed < SCATTER_DURATION){
-      progress = 0; // 飞散状态
-    } else if(elapsed < SCATTER_DURATION+ASSEMBLE_DURATION){
-      progress = ease((elapsed-SCATTER_DURATION)/ASSEMBLE_DURATION);
-    } else {
-      progress = 1; // 完成重组
+  // 净值图
+  const eq = d.equity || [];
+  if (eq.length > 0 && document.getElementById('equity-chart')) {
+    if (!chart) {
+      chart = echarts.init(document.getElementById('equity-chart'));
     }
-    mat.uniforms.uProgress.value = progress;
-
-    // lerp 插值位置
-    const pos = geo.attributes.position.array;
-    for(let i=0;i<PARTICLE_COUNT;i++){
-      const idx = i*3;
-      // 每个粒子有不同的延迟(波浪扩散效果)
-      const delay = randoms[i]*0.3;
-      const localProgress = Math.max(0, Math.min(1, (progress-delay)/(1-delay)));
-      pos[idx] = startPos[idx]+(targetPos[idx]-startPos[idx])*localProgress;
-      pos[idx+1] = startPos[idx+1]+(targetPos[idx+1]-startPos[idx+1])*localProgress;
-      pos[idx+2] = startPos[idx+2]+(targetPos[idx+2]-startPos[idx+2])*localProgress;
-      // 飞行中微小扰动
-      if(localProgress<1){
-        pos[idx] += Math.sin(elapsed*3+randoms[i]*10)*0.02;
-        pos[idx+1] += Math.cos(elapsed*2+randoms[i]*8)*0.02;
-      }
-    }
-    geo.attributes.position.needsUpdate = true;
-
-    // 鼠标微小影响视角
-    camera.position.x = mouseX*1.5;
-    camera.position.y = -mouseY*1.0;
-    camera.lookAt(0,0,0);
-    renderer.render(scene, camera);
+    chart.setOption({
+      grid: {left:10, right:10, top:10, bottom:10},
+      xAxis: {type:'category', data: eq.map(r => r.date.slice(5)), show:false, axisTick:{show:false}},
+      yAxis: {type:'value', splitLine:{lineStyle:{color:'rgba(255,255,255,0.05)'}}, show:false},
+      series: [{
+        type:'line', smooth:true, symbol:'none',
+        data: eq.map(r => r.total_value || 0),
+        lineStyle:{width:2,color:'#7c5cfc'},
+        areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(124,92,252,0.3)'},{offset:1,color:'rgba(124,92,252,0)'}]}}
+      }],
+      tooltip:{trigger:'axis', formatter: p => fmt(p[0].value)},
+    }, true);
   }
-  animateIntro();
 
-  // 淡出
-  const fadeStart = (SCATTER_DURATION+ASSEMBLE_DURATION+HOLD_DURATION)*1000;
-  setTimeout(()=>{
-    overlay.classList.add('fade-out');
-    setTimeout(()=>{ introActive=false; overlay.remove(); renderer.dispose(); }, FADE_DURATION*1000);
-  }, fadeStart);
+  // 最近交易
+  const trades = d.trades || [];
+  document.getElementById('recent-trades').innerHTML = trades.length === 0 ? '<span class="text-[var(--text-muted)]">暂无交易</span>' :
+    '<div style="max-height:260px;overflow-y:auto;">' + trades.slice(0,15).map(t => {
+      const sign = t.action === 'buy' ? '🟢' : '🔴';
+      return '<div style="padding:4px 0;border-bottom:1px solid var(--border);">' + sign + ' ' +
+        (t.stock_name||t.stock_code) + ' ' + (t.action==='buy'?'买入':'卖出') + ' ' +
+        t.shares + '股 @' + fmt(t.price) +
+        '<span class="text-[var(--text-muted)] text-xs ml-2">' + (t.timestamp||'').slice(0,16) + '</span></div>';
+    }).join('') + '</div>';
 
-})();
-</script>
--->
+  // 交易统计
+  const stats = d.stats || {};
+  document.getElementById('trade-stats').innerHTML =
+    '<div class="grid grid-cols-2 gap-3">' +
+    '<div><span class="text-[var(--text-muted)]">总交易</span><br><span class="mono">' + (stats.total_trades||0) + '</span></div>' +
+    '<div><span class="text-[var(--text-muted)]">胜率</span><br><span class="mono">' + (stats.win_rate||0) + '%</span></div>' +
+    '<div><span class="text-[var(--text-muted)]">最大盈利</span><br><span class="mono up">¥' + fmt(stats.max_profit||0) + '</span></div>' +
+    '<div><span class="text-[var(--text-muted)]">最大亏损</span><br><span class="mono down">¥' + fmt(stats.max_loss||0) + '</span></div>' +
+    '</div>';
 
-<!-- 独立的背景粒子(确保不被入场动画报错影响) -->
-<script>
-(function(){
-  const canvas = document.getElementById('bg-canvas');
-  if(!canvas) return;
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 200);
-  camera.position.z = 40;
-  const renderer = new THREE.WebGLRenderer({canvas:canvas, alpha:true});
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // 复盘日志
+  const reviews = d.reviews || [];
+  document.getElementById('review-log').innerHTML = reviews.length === 0 ? '<span class="text-[var(--text-muted)]">暂无复盘记录</span>' :
+    '<div style="max-height:200px;overflow-y:auto;">' + reviews.slice(0,8).map(r => {
+      const tags = (r.tags||[]).map(t => '<span class="badge" style="background:var(--bg-elevated);border-color:var(--border-light);">' + t + '</span>').join(' ');
+      return '<div style="padding:6px 0;border-bottom:1px solid var(--border);">' +
+        '<div class="text-xs text-[var(--text-muted)]">' + (r.date||'') + ' ' + tags + '</div>' +
+        '<div style="margin-top:2px;color:var(--text-secondary);">' + (r.content||'').slice(0,200) + '</div></div>';
+    }).join('') + '</div>';
+}
 
-  const count = 500;
-  const positions = new Float32Array(count*3);
-  const velocities = new Float32Array(count*3);
-  for(let i=0;i<count;i++){
-    positions[i*3]=(Math.random()-0.5)*60;
-    positions[i*3+1]=(Math.random()-0.5)*40;
-    positions[i*3+2]=(Math.random()-0.5)*20;
-    velocities[i*3]=(Math.random()-0.5)*0.01;
-    velocities[i*3+1]=-Math.random()*0.02-0.01;
-    velocities[i*3+2]=0;
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+// 自动刷新
+document.addEventListener('DOMContentLoaded', function() {
+  refreshData();
+  setInterval(refreshData, 15000);  // 15秒自动刷新
+  
+  const now = new Date();
+  document.getElementById('time-display').textContent = now.toLocaleDateString('zh-CN', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+});
 
-  // 简单的发光纹理
-  const c2 = document.createElement('canvas'); c2.width=32; c2.height=32;
-  const ctx = c2.getContext('2d');
-  const g = ctx.createRadialGradient(16,16,0,16,16,16);
-  g.addColorStop(0,'rgba(255,255,255,1)');
-  g.addColorStop(0.3,'rgba(255,255,255,0.5)');
-  g.addColorStop(1,'rgba(255,255,255,0)');
-  ctx.fillStyle=g; ctx.fillRect(0,0,32,32);
-  const tex = new THREE.CanvasTexture(c2);
-
-  const mat = new THREE.PointsMaterial({
-    size:1.2, color:0x7c5cfc, transparent:true, opacity:0.5,
-    map:tex, blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true
-  });
-  const points = new THREE.Points(geo, mat);
-  scene.add(points);
-
-  function animate(){
-    requestAnimationFrame(animate);
-    const pos = geo.attributes.position.array;
-    for(let i=0;i<count;i++){
-      pos[i*3]+=velocities[i*3];
-      pos[i*3+1]+=velocities[i*3+1];
-      if(pos[i*3+1]<-20){pos[i*3+1]=20;pos[i*3]=(Math.random()-0.5)*60;}
-    }
-    geo.attributes.position.needsUpdate=true;
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  window.addEventListener('resize',()=>{
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect=window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-  });
-})();
+// 窗口调整时 resize 图表
+window.addEventListener('resize', () => { if (chart) chart.resize(); });
 </script>
 </body>
 </html>
