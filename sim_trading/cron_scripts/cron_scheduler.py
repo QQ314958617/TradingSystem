@@ -28,6 +28,10 @@ TASKS = {
         "script": "run_small_cap.py",
         "check_minutes": [10*60, 14*60, 14*60 + 30],  # 10:00, 14:00, 14:30
     },
+    "white_horse_adjust": {
+        "script": "run_white_horse.py",
+        "check_minutes": [9*60 + 35],  # 09:35 每日调仓(与聚宽run_daily一致)
+    },
     "white_horse_stop": {
         "script": "run_white_horse.py",
         "check_minutes": [14*60, 14*60 + 30, 14*60 + 50],  # 14:00, 14:30, 14:50
