@@ -163,10 +163,18 @@ def execute_trade():
         commission = calc_buy_commission(amount)
         cost = amount + commission
 
-        # === 一夜持股法单票上限¥30,000硬限制 (2026-05-29) ===
-        if strategy_id == 1 and amount > 30000:
+        # === 策略单票上限 ===
+        # ETF轮动40k可满仓，小市值35k分6只，白马25k分20只
+        max_per_stock = {
+            1: 40000,   # ETF轮动最多1只，可满仓
+            2: min(35000, strategy.get('capital', 35000) * 0.3),  # 小市值单票最多30%策略资金
+            3: min(25000, strategy.get('capital', 25000) * 0.3),  # 白马单票最多30%策略资金
+        }
+        max_single = max_per_stock.get(strategy_id, 30000)
+        if amount > max_single:
+            sname = strategy.get('name', '策略')
             return jsonify({
-                "error": f"一夜持股法单票上限¥30,000！本次金额¥{amount:.0f}超限。请减少股数。"
+                "error": f"{sname}单票上限¥{max_single:.0f}！本次金额¥{amount:.0f}超限。"
             }), 400
 
         if cost > account['cash']:
