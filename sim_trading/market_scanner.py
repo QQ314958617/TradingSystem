@@ -92,26 +92,7 @@ def scan_market() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def filter_overnight_candidates(df: pd.DataFrame, config: dict = None) -> pd.DataFrame:
-    """按一夜持股法条件过滤"""
-    cfg = config or {
-        'rise_min': 3.0, 'rise_max': 10.0,
-        'turnover_min': 2.0, 'turnover_max': 15.0,
-        'mv_min': 30, 'mv_max': 500,
-        'vol_ratio_min': 1.2,
-    }
-    
-    filtered = df.copy()
-    if 'change_pct' in filtered.columns:
-        filtered = filtered[(filtered['change_pct'] >= cfg['rise_min']) & (filtered['change_pct'] <= cfg['rise_max'])]
-    if 'turnover' in filtered.columns:
-        filtered = filtered[(filtered['turnover'] >= cfg['turnover_min']) & (filtered['turnover'] <= cfg['turnover_max'])]
-    if 'circulate_mv' in filtered.columns:
-        filtered = filtered[(filtered['circulate_mv'] >= cfg['mv_min']) & (filtered['circulate_mv'] <= cfg['mv_max'])]
-    if 'volume_ratio' in filtered.columns:
-        filtered = filtered[filtered['volume_ratio'] >= cfg['vol_ratio_min']]
-    filtered = filtered[filtered['price'] > 0]
-    return filtered.sort_values('change_pct', ascending=False)
+
 
 
 def get_market_overview() -> dict:

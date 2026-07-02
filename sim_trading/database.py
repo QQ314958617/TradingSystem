@@ -149,11 +149,11 @@ def init_database():
                 c.execute('UPDATE account SET initial_capital = total_value WHERE id = 1')
                 print(f"  📌 已同步 initial_capital={row[0]} (防止旧数据利润虚高)")
 
-        # 初始化默认策略(每个¥100K)
+        # 初始化默认策略
         default_strategies = [
-            ('一夜持股法', 'overnight', '尾盘14:50-14:55买入,次日早盘09:30-10:30卖出,超短线一夜持股', 100000.0, 1, '{}'),
-            ('价值投资', 'value', '巴菲特价值投资理念,PE<15、ROE>15%,中线持有到合理估值', 300000.0, 1, '{}'),
-            ('趋势跟踪', 'trend', '强势股趋势波段,均线金叉+放量突破,持股1-2周', 100000.0, 1, '{}'),
+            ('ETF轮动', 'etf_rotation', 'ETF动量评分轮动,每日换仓持有最强ETF', 40000.0, 1, '{}'),
+            ('小市值', 'small_cap', '399100成分股流通市值排序,每周二调仓持6只', 35000.0, 1, '{}'),
+            ('白马', 'white_horse', '沪深300质优股+创业板小盘,大盘择时+月度调仓', 25000.0, 1, '{}'),
         ]
         for s in default_strategies:
             c.execute('''

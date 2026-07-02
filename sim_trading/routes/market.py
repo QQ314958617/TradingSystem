@@ -373,7 +373,7 @@ def market_fullscan():
     """全市场扫描API（腾讯方案，无IP限制）"""
     try:
         import pandas as pd
-        from market_scanner import scan_market, filter_overnight_candidates, get_market_overview
+        from market_scanner import scan_market, get_market_overview
 
         mode = request.args.get('mode', 'overnight')
 
