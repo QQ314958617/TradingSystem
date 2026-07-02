@@ -14,13 +14,10 @@ import config  # noqa: F401
 from flask import Flask
 import database as db
 from routes import register_blueprints
-from services.quote import preload_market_data
+
 
 # 多策略框架 - 注册策略模块
 from trading.strategies import StrategyManager
-from strategies.overnight_strategy import OvernightStrategy  # noqa: F401
-from strategies.value_strategy import ValueInvestingStrategy  # noqa: F401
-from strategies.trend_strategy import TrendFollowingStrategy  # noqa: F401
 
 # 配置日志
 logging.basicConfig(
@@ -39,8 +36,6 @@ register_blueprints(app)
 # 策略管理器
 strategy_mgr = StrategyManager()
 
-# 后台预加载市场数据
-preload_market_data()
 
 
 @app.before_request

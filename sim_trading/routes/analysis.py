@@ -116,38 +116,9 @@ def get_indicators(stock_code):
 
 @analysis_bp.route('/api/screen/overnight', methods=['GET'])
 def screen_overnight_route():
-    """一夜持股法选股API（v3.1 腾讯API版）"""
-    try:
-        import sys
-        sys.path.insert(0, '/root/.openclaw/workspace/sim_trading')
-        from strategies.overnight_strategy import OvernightStrategy
-
-        s = OvernightStrategy(strategy_id=1)
-        results = s.scan_stocks()
-        index_data = s._get_market_index()
-
-        return jsonify({
-            "success": True,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "strategy": "一夜持股法v3.1",
-            "config": {
-                "rise_min": s.config['rise_min'],
-                "rise_max": s.config['rise_max'],
-                "turnover_min": s.config['turnover_min'],
-                "turnover_max": s.config['turnover_max'],
-                "market_cap_min": s.config['market_cap_min'],
-                "market_cap_max": s.config['market_cap_max'],
-                "rsi_min": s.config['rsi_min'],
-                "rsi_max": s.config['rsi_max'],
-            },
-            "index": index_data,
-            "results": results,
-            "count": len(results),
-        })
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "traceback": traceback.format_exc(),
-        }), 500
+    """旧策略已下线"""
+    return jsonify({
+        "success": False,
+        "error": "一夜持股法策略已下线，请使用新策略",
+        "results": []
+    }), 410

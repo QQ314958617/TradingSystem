@@ -382,27 +382,12 @@ def market_fullscan():
             return jsonify(result)
 
         elif mode == 'overnight':
-            df = scan_market()
-            candidates = filter_overnight_candidates(df)
-            if candidates.empty:
-                return jsonify({'total': 0, 'candidates': []})
-
-            result = []
-            for _, r in candidates.iterrows():
-                result.append({
-                    'code': r['code'],
-                    'name': r['name'],
-                    'price': r['price'],
-                    'change_pct': r['change_pct'],
-                    'turnover': r['turnover'],
-                    'circulate_mv_yi': r.get('circulate_mv', 0),
-                    'volume_ratio': r['volume_ratio'],
-                })
             return jsonify({
-                'total_stocks': len(df),
-                'total_candidates': len(result),
-                'candidates': result,
+                'total_stocks': 0,
+                'total_candidates': 0,
+                'candidates': [],
                 'scan_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'message': '旧策略已下线',
             })
 
         elif mode == 'top':

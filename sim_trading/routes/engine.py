@@ -460,22 +460,6 @@ def market_scan():
         now_min = datetime.now().minute
         in_buy_window = (now_hour == 14 and 30 <= now_min <= 55)
 
-        if in_buy_window and not result["actions"] and not positions_data:
-            try:
-                from strategies.overnight_strategy import OvernightStrategy
-                s = OvernightStrategy(strategy_id=1)
-                candidates = s.scan_stocks()
-                if candidates:
-                    best = candidates[0]
-                    result["signals"].append({
-                        "type": "BUY_OPPORTUNITY",
-                        "code": best.get('code', ''),
-                        "name": best.get('name', ''),
-                        "change_pct": best.get('change_pct', 0),
-                        "score": best.get('score', 0),
-                    })
-            except Exception as e:
-                logger.warning(f"选股失败: {e}")
 
         # 最终决定（仅输出信号，交易由cron通过/api/trade执行）
         if result["actions"]:

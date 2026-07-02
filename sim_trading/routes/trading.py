@@ -317,10 +317,7 @@ def position_manage():
     except Exception:
         return jsonify({'error': '获取行情失败'}), 500
     
-    # 加载策略
-    from strategies.value_strategy import ValueInvestingStrategy
-    strategy = ValueInvestingStrategy(strategy_id)
-    
+    # 旧策略已下线
     suggestions = []
     for pos in positions:
         code = pos['stock_code']
