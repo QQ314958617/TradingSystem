@@ -7,6 +7,7 @@ from flask import Blueprint, jsonify, request
 
 import requests
 import database as db
+from services.cache import cache
 from services.quote import get_tencent_quote, get_market_top_cached, get_tencent_kline, get_index_kline, calculate_rsi
 
 logger = logging.getLogger(__name__)

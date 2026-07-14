@@ -312,8 +312,6 @@ def get_market_analysis():
     """获取实时大盘分析（技术面+资金面+情绪面）"""
     try:
         # 获取多指数数据
-        with market_bp.test_client() if False else None or True:
-            pass
         # 直接调用内部逻辑
         indices_resp = get_multi_indices()
         indices_data = indices_resp.get_json()
